@@ -1,0 +1,2118 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>PartyBox: Шпигун & Таємниця 🕵️</title>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+
+*,*::before,*::after{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
+
+:root{
+  --bg:#07070e;
+  --surface:rgba(255,255,255,0.03);
+  --surface2:rgba(255,255,255,0.07);
+  --border:rgba(255,255,255,0.08);
+  --border2:rgba(255,255,255,0.15);
+  --cyan:#00f5d4;
+  --violet:#b97cff;
+  --pink:#ff4daa;
+  --red:#ff3a5c;
+  --text:#f0f0f8;
+  --muted:rgba(240,240,248,0.45);
+  --card-w:min(390px,92vw);
+  --card-h:min(460px,calc(100dvh - 250px));
+  --screen-pt:max(calc(env(safe-area-inset-top,0px) + 66px),100px);
+  --screen-pb:max(env(safe-area-inset-bottom,0px),24px);
+}
+
+html,body{
+  height:100%;
+  min-height:100%;
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Plus Jakarta Sans','Inter',sans-serif;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+
+/* ORBS */
+.orb{position:fixed;border-radius:50%;filter:blur(100px);opacity:0.12;pointer-events:none;z-index:0;animation:drift 20s ease-in-out infinite alternate;}
+.orb1{width:500px;height:500px;background:var(--violet);top:-150px;left:-100px;}
+.orb2{width:400px;height:400px;background:var(--cyan);bottom:-100px;right:-80px;animation-delay:-6s;}
+.orb3{width:300px;height:300px;background:var(--pink);top:40%;left:50%;animation-delay:-12s;}
+@keyframes drift{from{transform:translate(0,0) scale(1)}to{transform:translate(50px,40px) scale(1.15)}}
+
+/* HEADER */
+header {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: var(--card-w);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: max(env(safe-area-inset-top, 10px), 16px) 16px 12px 16px;
+  z-index: 100;
+  background: transparent;
+  border-bottom: none;
+}
+.header-logo {
+  font-family: 'Unbounded', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, var(--cyan), var(--violet));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.header-actions {
+  display: flex;
+  gap: 10px;
+}
+.header-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 14px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.header-btn:hover { background: rgba(255,255,255,0.15); border-color: var(--border2); }
+
+/* SCREENS */
+.screen{
+  position:fixed;
+  inset:0;
+  z-index:10;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+  padding: var(--screen-pt) 16px var(--screen-pb) 16px;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity 0.15s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+  transform:translateY(20px);
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+.screen.active{opacity:1;pointer-events:all;transform:translateY(0);}
+#screen-setup, #screen-secret-game, #screen-secret-result {overflow-y:hidden;}
+.screen-center{justify-content:center;}
+
+/* RESULT SCREEN */
+#screen-secret-result .result-card {
+  width: min(100%, 760px);
+  max-width: 760px;
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  border-radius: 32px;
+  background: rgba(12, 11, 24, 0.95);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.45);
+  max-height: calc(100dvh - 40px);
+  overflow: hidden;
+}
+#screen-secret-result .result-header { display:flex; flex-direction:column; gap: 16px; align-items:center; }
+#screen-secret-result .result-icon { font-size: 4.8rem; }
+#screen-secret-result .result-title { font-family: 'Unbounded', sans-serif; font-size: clamp(2rem, 4vw, 2.6rem); font-weight: 900; line-height:1.05; text-align:center; background: linear-gradient(135deg, var(--cyan), var(--violet)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+#screen-secret-result .result-message { color: var(--text); font-size: 1rem; line-height:1.6; text-align:center; max-width: 88%; }
+#screen-secret-result .result-grid { display: flex; gap: 18px; justify-content: center; align-items: stretch; flex-wrap: wrap; }
+#screen-secret-result .result-panel { flex: 1 1 220px; min-width: 220px; max-width: 280px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 18px; display:flex; flex-direction:column; gap: 14px; align-items:center; }
+#screen-secret-result .result-panel-label { color: var(--muted); font-size: 0.72rem; letter-spacing: 1.6px; text-transform: uppercase; font-weight: 700; }
+#screen-secret-result .result-panel-img { width: 120px; height: 120px; border-radius: 26px; overflow:hidden; background: rgba(255,255,255,0.08); display:flex; align-items:center; justify-content:center; }
+#screen-secret-result .result-panel-img img { width: 100%; height: 100%; object-fit: cover; display:block; }
+#screen-secret-result .result-panel-emoji { font-size: 3rem; }
+#screen-secret-result .result-panel-name { color: var(--text); font-size: 1rem; font-weight: 800; text-align:center; line-height:1.3; }
+#screen-secret-result .result-button { width: 100%; max-width: 320px; margin: 0 auto; }
+#screen-secret-result .result-card { margin: 0 auto; }
+@media (max-width: 760px) {
+  #screen-secret-result .result-card { padding: 26px 20px; gap: 20px; }
+  #screen-secret-result .result-grid { flex-direction: column; gap: 16px; }
+  #screen-secret-result .result-panel { max-width: 100%; }
+  #screen-secret-result .result-panel-img { width: 110px; height: 110px; }
+  #screen-secret-result .result-title { font-size: clamp(1.8rem, 7vw, 2.4rem); }
+}
+@media (max-width: 520px) {
+  #screen-secret-result { padding: calc(env(safe-area-inset-top, 16px) + 10px) 12px calc(env(safe-area-inset-bottom, 16px) + 10px); }
+  #screen-secret-result .result-card { padding: 20px 16px; }
+  #screen-secret-result .result-message { font-size: 0.95rem; }
+}
+
+/* GLASS */
+.glass{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:28px;
+  backdrop-filter:blur(30px) saturate(190%);
+  -webkit-backdrop-filter:blur(30px) saturate(190%);
+  box-shadow:0 12px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+/* CARDS & CONTAINERS */
+.setup-card{
+  width:var(--card-w);
+  padding:20px 22px;
+  margin-top: 10px;
+  margin-bottom: 20px;
+  display:flex;
+  flex-direction:column;
+  height:calc(100dvh - var(--screen-pt) - var(--screen-pb) - 34px);
+  overflow:hidden;
+}
+.auto-height-card { height: auto !important; }
+.section-label{
+  font-size:0.75rem;
+  letter-spacing:2.5px;
+  text-transform:uppercase;
+  color:var(--cyan);
+  margin-bottom:8px;
+  font-weight:700;
+}
+
+/* STEPPER */
+.stepper{
+  display:flex;
+  align-items:center;
+  background:var(--surface2);
+  border:1px solid var(--border2);
+  border-radius:18px;
+  overflow:hidden;
+  width:100%;
+}
+.stepper button{
+  background:none;
+  border:none;
+  color:var(--text);
+  font-size:1.8rem;
+  width:64px;
+  height:52px;
+  cursor:pointer;
+  transition:background 0.2s;
+  flex-shrink:0;
+  line-height:1;
+}
+.stepper button:hover, .stepper button:active{ background:rgba(255,255,255,0.08); }
+.stepper .val{ flex:1; text-align:center; font-family:'Unbounded',sans-serif; font-size:1.8rem; font-weight:700; }
+.spy-hint{ text-align:center; color:var(--muted); font-size:0.8rem; margin-top:10px; }
+.spy-hint strong{ color:var(--violet); }
+
+/* VERTICAL CATEGORY SELECTOR */
+.cats-wrapper { width: 100%; margin-top: 8px; flex:1; min-height:0; overflow:hidden; }
+#cats-section, #secret-cats-section{ display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden; }
+.cats{ display:flex; flex-direction: column; gap: 6px; height:100%; overflow-y: auto; padding-right: 4px; }
+.cat-toggle{
+  display:flex; flex-direction: row; align-items: center; gap:16px; padding:0 18px;
+  flex:1; min-height:44px; max-height:80px; background:var(--surface2);
+  border:1px solid var(--border); border-radius:18px; cursor:pointer;
+  transition:all 0.25s cubic-bezier(0.16, 1, 0.3, 1); user-select:none;
+}
+.cat-toggle.active{ border-color:var(--cyan); background:rgba(0,245,212,0.06); box-shadow:0 0 20px rgba(0,245,212,0.12); }
+.cat-toggle .ct-icon{ font-size:1.8rem; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3)); }
+.cat-toggle .ct-check{
+  width:24px; height:24px; border-radius:8px; border:2px solid var(--border2);
+  display:flex; align-items:center; justify-content:center; font-size:0.8rem; transition:all 0.25s; flex-shrink: 0;
+}
+.cat-toggle.active .ct-check{ background:var(--cyan); border-color:var(--cyan); color:#07070e; font-weight: bold; }
+.cat-toggle .ct-name{ font-size:0.95rem; font-weight:700; line-height: 1.3; }
+.cat-toggle .ct-count{ font-size:0.72rem; color:var(--muted); margin-top:3px; }
+
+/* BUTTONS */
+.btn-primary{
+  width:100%; padding:18px; background:linear-gradient(135deg,var(--cyan),var(--violet));
+  border:none; border-radius:18px; color:#07070e; font-family:'Unbounded',sans-serif;
+  font-weight:700; font-size:0.9rem; letter-spacing:0.5px; cursor:pointer;
+  box-shadow:0 6px 30px rgba(185,124,255,0.25); transition:transform 0.15s, box-shadow 0.15s, filter 0.15s;
+}
+.btn-primary:hover{ transform:translateY(-2px); box-shadow:0 10px 36px rgba(185,124,255,0.35); filter:brightness(1.08); }
+.btn-primary:active{ transform:translateY(0); filter:brightness(0.9); }
+.btn-primary:disabled{ opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+.btn-ghost{
+  background:var(--surface2); border:1px solid var(--border2); border-radius:16px;
+  color:var(--text); font-size:0.9rem; padding:16px 24px; cursor:pointer;
+  transition:all 0.2s; width:100%; font-weight: 600;
+}
+.btn-ghost:hover{ background:rgba(185,124,255,0.12); border-color:var(--violet); }
+.btn-danger {
+  background: linear-gradient(135deg, var(--red), var(--pink)); color: #fff;
+  box-shadow: 0 6px 30px rgba(255,60,92,0.25);
+}
+.btn-danger:hover { box-shadow: 0 10px 36px rgba(255,60,92,0.35); }
+
+/* DEAL SCREEN SPY */
+.deal-wrap{ width:var(--card-w); display:flex; flex-direction:column; align-items:center; gap:20px; }
+.prompt-box{ width:100%; padding:36px 24px; text-align:center; }
+.player-badge{
+  font-family:'Unbounded',sans-serif; font-size:clamp(1.8rem, 8vw, 2.6rem); font-weight:900;
+  background:linear-gradient(135deg,var(--violet),var(--pink)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:12px;
+}
+.prompt-text{ color:var(--muted); font-size:0.95rem; line-height:1.6; margin-bottom:28px; }
+
+/* 3D FLIP CARD */
+.flip-scene{ width:var(--card-w); height:var(--card-h); perspective:2200px; }
+.flip-card{ width:100%; height:100%; position:relative; transform-style:preserve-3d; transition:transform 1.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.flip-card.flipped{ transform:rotateY(180deg); }
+.flip-face{ position:absolute; inset:0; width: 100%; height: 100%; border-radius:28px; overflow:hidden; backface-visibility:hidden; -webkit-backface-visibility:hidden; }
+.flip-front{
+  background:linear-gradient(145deg,rgba(25,18,50,0.96),rgba(10,10,25,0.98)); border:1px solid rgba(185,124,255,0.25);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; cursor:pointer;
+  box-shadow:0 8px 48px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.05); z-index: 2; opacity: 1; transition: opacity 0.15s ease;
+}
+.front-pattern{ position:absolute; inset:0; opacity:0.04; background-image:repeating-linear-gradient(45deg,var(--violet) 0,var(--violet) 1px,transparent 0,transparent 50%); background-size:24px 24px; }
+.front-glow{ position:absolute; width:220px; height:220px; background:radial-gradient(circle,rgba(255,255,255,.04) 0%,transparent 55%); filter:blur(40px); top:50%; left:50%; transform:translate(-50%,-50%); border-radius:50%; }
+.front-icon{ font-size:4.5rem; filter:drop-shadow(0 0 25px rgba(185,124,255,0.5)); position:relative; z-index:1; }
+.front-label{ color:var(--muted); font-size:0.8rem; letter-spacing:3px; text-transform:uppercase; position:relative; z-index:1; font-weight: 600; }
+.flip-back{ transform:rotateY(180deg); display:flex; flex-direction:column; box-shadow:0 10px 50px rgba(0,0,0,0.7); z-index: 1; opacity: 0; pointer-events: none; transition: opacity 0.15s ease; }
+.flip-card.flipped .flip-front { opacity: 0; pointer-events: none; }
+.flip-card.flipped .flip-back { opacity: 1; pointer-events: auto; }
+.back-char{ background:linear-gradient(170deg,#0f0a22 0%,#06060c 100%); border:1px solid rgba(0,245,212,0.25); }
+.back-spy{ background:linear-gradient(170deg,#1c0613 0%,#090207 100%); border:1px solid rgba(255,60,92,0.3); }
+
+/* CARD INNER ELEMENTS */
+.card-img-wrap{ width:100%; flex:1; position:relative; overflow:hidden; min-height:0; background: rgba(0,0,0,0.2); }
+.card-img{ width:100%; height:100%; object-fit:contain; display:block; transition:opacity 0.7s; padding: 12px; }
+.card-img.loading{ opacity:0; }
+.card-img-overlay{ position:absolute; inset:0; background:linear-gradient(to bottom, rgba(0,0,0,0) 50%, rgba(15,10,34,0.95) 100%); pointer-events: none; }
+.card-img-placeholder{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:6rem; background:rgba(255,255,255,0.01); }
+.img-loader{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(7,7,14,0.4); }
+.spinner{ width:32px; height:32px; border:3px solid rgba(255,255,255,0.1); border-top-color:var(--cyan); border-radius:50%; animation:spin 0.8s linear infinite; }
+@keyframes spin{to{transform:rotate(360deg)}}
+.card-info{ padding:20px 65px 24px 24px; flex-shrink:0; display:flex; flex-direction:column; gap:6px; position: relative; }
+.card-top-label{ font-size:0.68rem; letter-spacing:3px; text-transform:uppercase; color:var(--muted); font-weight: 700; }
+.card-name{ font-family:'Unbounded',sans-serif; font-size:clamp(1.1rem, 4.5vw, 1.45rem); font-weight:800; line-height:1.25; background:linear-gradient(135deg,var(--cyan),#a8ffea); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.card-bot-label{ font-size:0.65rem; letter-spacing:2px; text-transform:uppercase; color:rgba(0,245,212,0.55); margin-top:2px; font-weight: 600; }
+.info-trigger-btn { position: absolute; bottom: 24px; right: 24px; width: 36px; height: 36px; background: rgba(255,255,255,0.08); border: 1px solid var(--border2); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--cyan); font-size: 1rem; font-weight: bold; transition: all 0.2s; z-index: 20; }
+.info-trigger-btn:hover { background: var(--cyan); color: #07070e; box-shadow: 0 0 12px rgba(0,245,212,0.4); }
+
+/* SPY CONTENT */
+.spy-content{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; padding:24px; background:radial-gradient(circle,rgba(255,60,92,0.12) 0%,transparent 70%); }
+.spy-emoji{ font-size:5.5rem; filter:drop-shadow(0 0 30px rgba(255,60,92,0.55)); animation:spyPulse 2.5s ease-in-out infinite; }
+@keyframes spyPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+.spy-title{ font-family:'Unbounded',sans-serif; font-size:clamp(1.5rem, 6.5vw, 2.1rem); font-weight:900; background:linear-gradient(135deg,var(--red),var(--pink),var(--violet)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; text-align:center; line-height:1.2; filter:drop-shadow(0 0 15px rgba(255,60,92,0.3)); }
+.spy-sub{ color:rgba(255,100,140,0.6); font-size:0.78rem; letter-spacing:2.5px; text-transform:uppercase; text-align:center; line-height: 1.5; font-weight: 600; }
+.spy-card-info{ padding:22px 24px 24px; flex-shrink:0; }
+.spy-badge{ display:flex; align-items:center; gap:10px; }
+.spy-dot{ width:10px; height:10px; border-radius:50%; background:var(--red); box-shadow:0 0 10px var(--red); animation:blink 1.4s ease-in-out infinite; }
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+.spy-badge-text{ font-size:0.7rem; letter-spacing:3px; text-transform:uppercase; color:rgba(255,80,110,0.7); font-weight: 700; }
+.deal-actions{ width:var(--card-w); display:flex; flex-direction:column; gap:12px; }
+
+/* FINAL SCREEN */
+.final-card{ width:var(--card-w); padding:40px 28px; text-align:center; }
+.final-icon{ font-size:4.5rem; display:block; margin-bottom:20px; animation:pulse 2.5s ease-in-out infinite; }
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+.final-title{ font-family:'Unbounded',sans-serif; font-size:clamp(1.4rem, 6vw, 1.9rem); font-weight:900; line-height:1.25; margin-bottom:16px; background:linear-gradient(135deg,var(--cyan),var(--violet)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.final-sub{ color:var(--muted); font-size:0.92rem; line-height:1.7; margin-bottom:28px; }
+.final-stats{ display:flex; gap:12px; justify-content:center; margin-bottom:28px; }
+.stat-chip{ background:var(--surface2); border:1px solid var(--border); border-radius:14px; padding:12px 20px; font-size:0.8rem; color:var(--muted); flex: 1; }
+.stat-chip strong{ color:var(--text); display:block; font-family:'Unbounded',sans-serif; font-size:1.3rem; margin-bottom: 4px; }
+
+/* MODALS */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(4, 4, 8, 0.85); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+.modal-overlay.active { opacity: 1; pointer-events: auto; }
+.modal-content { width: 90%; max-width: 420px; padding: 30px 24px; position: relative; transform: scale(0.92); transition: transform 1.25s cubic-bezier(0.16, 1, 0.3, 1); max-height: 85vh; overflow-y: auto; }
+.modal-overlay.active .modal-content { transform: scale(1); }
+.close-modal-btn { position: absolute; top: 18px; right: 18px; font-size: 1.8rem; color: var(--muted); background: none; border: none; cursor: pointer; transition: color 0.2s; line-height: 1; }
+.close-modal-btn:hover { color: var(--text); }
+.modal-title { font-family: 'Unbounded', sans-serif; font-size: 1.2rem; font-weight: 800; margin-bottom: 20px; text-align: center; background: linear-gradient(135deg, var(--cyan), var(--violet)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.rules-scroll { font-size: 0.95rem; line-height: 1.6; color: rgba(240, 240, 248, 0.85); }
+.rules-scroll h4 { color: var(--cyan); margin-top: 18px; margin-bottom: 8px; font-family: 'Unbounded', sans-serif; font-size: 0.85rem; letter-spacing: 1px; }
+.rules-scroll ul { padding-left: 20px; margin-bottom: 12px; }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(185, 124, 255, 0.25); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(185, 124, 255, 0.45); }
+
+/* TOAST */
+.toast{ position:fixed; bottom:32px; left:50%; transform:translateX(-50%) translateY(20px); background:rgba(255,60,100,0.12); border:1px solid rgba(255,60,100,0.35); backdrop-filter:blur(20px); color:#ff7fa0; border-radius:14px; padding:14px 28px; font-size:0.88rem; font-weight: 600; opacity:0; transition:opacity 0.3s, transform 0.3s; z-index:1200; pointer-events:none; white-space:nowrap; }
+.toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+.mt8{margin-top:8px} .mt16{margin-top:16px} .mt20{margin-top:20px} .mt22{margin-top:22px} .mt24{margin-top:24px}
+
+/* MAIN MENU */
+.main-menu-container { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; width: 100%; max-width: var(--card-w); }
+.game-mode-card { width: 100%; padding: 32px 24px; cursor: pointer; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); border-radius: 28px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.game-mode-card.spy-mode { background: linear-gradient(135deg, rgba(185, 124, 255, 0.15), rgba(185, 124, 255, 0.08)); border: 1.5px solid rgba(185, 124, 255, 0.35); }
+.game-mode-card.secret-mode { background: linear-gradient(135deg, rgba(0, 245, 212, 0.15), rgba(0, 245, 212, 0.08)); border: 1.5px solid rgba(0, 245, 212, 0.35); }
+.game-mode-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4); border-color: var(--cyan); }
+.game-mode-icon { font-size: 3.5rem; }
+.game-mode-title { font-family: 'Unbounded', sans-serif; font-size: 1.4rem; font-weight: 800; text-align: center; }
+.game-mode-desc { font-size: 0.85rem; color: var(--muted); text-align: center; line-height: 1.5; }
+
+/* ════════════════════════════════════════════ */
+/* SECRET (ТАЄМНИЦЯ) GAME STYLES              */
+/* ════════════════════════════════════════════ */
+
+/* Landscape Lock Overlay - ТІЛЬКИ ЧЕРЕЗ CSS */
+.portrait-lock {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(7, 7, 14, 0.98); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  display: none !important; flex-direction: column; align-items: center; justify-content: center;
+  z-index: 9999; gap: 20px;
+}
+@media (orientation: portrait) {
+  body.is-secret-mode .portrait-lock { display: flex !important; }
+}
+.portrait-lock-icon { font-size: 5rem; animation: tilt 2s ease-in-out infinite; }
+@keyframes tilt { 0%,100%{transform:rotate(0deg)} 50%{transform:rotate(-90deg)} }
+.portrait-lock-text { font-family: 'Unbounded', sans-serif; font-size: 1.2rem; font-weight: 700; text-align: center; max-width: 80%; color: var(--cyan); }
+
+.huge-code { font-family: 'Unbounded', sans-serif; font-size: clamp(2.1rem, 8vw, 3.5rem); letter-spacing: 0.35em; text-align: center; color: var(--cyan); }
+.input-code { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px; color: var(--text); font-size: 1.2rem; font-family: 'Unbounded', sans-serif; text-transform: uppercase; letter-spacing: 0.25em; text-align:center; }
+.input-code:focus { outline: none; border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 245, 212, 0.15); }
+
+/* HORIZONTAL PREMIUM LAYOUT FOR MYSTERY GAME */
+.mystery-layout {
+  display: flex; flex-direction: row; align-items: stretch; justify-content: center;
+  width: min(100%, 1040px); max-width: 100%; margin: 0 auto; gap: 18px; padding: 20px;
+  min-height: calc(100vh - var(--screen-pt) - var(--screen-pb) - 20px);
+  background: rgba(10, 10, 20, 0.95);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 32px;
+  box-shadow: 0 40px 100px rgba(0,0,0,0.30);
+}
+.mystery-grid-wrap {
+  flex: 1 1 0; min-width: 0; max-width: calc(100% - 360px);
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 100px; gap: 12px;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 24px; padding: 14px;
+  max-height: calc(100vh - 180px); overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: rgba(0,245,212,0.35) transparent;
+}
+.mystery-grid-wrap::-webkit-scrollbar { width: 8px; }
+.mystery-grid-wrap::-webkit-scrollbar-thumb { background: rgba(0,245,212,0.35); border-radius: 999px; }
+.mystery-grid-wrap::-webkit-scrollbar-track { background: transparent; }
+.mystery-sidebar {
+  flex: 0 0 340px; min-width: 280px; max-width: 340px; display: flex; flex-direction: column; gap: 16px;
+  background: rgba(12, 11, 24, 0.96); border-radius: 28px; padding: 20px; border: 1px solid rgba(255,255,255,0.10);
+  box-shadow: 0 30px 70px rgba(0,0,0,0.28);
+  max-height: calc(100vh - 160px); overflow: hidden;
+}
+.mystery-sidebar-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.mystery-sidebar-body::-webkit-scrollbar { width: 6px; }
+.mystery-sidebar-body::-webkit-scrollbar-thumb { background: rgba(185,124,255,0.25); border-radius: 999px; }
+.mystery-actions { display: flex; flex-direction: column; gap: 12px; margin-top: auto; }
+.mystery-actions .btn-primary,
+.mystery-actions .btn-ghost,
+.mystery-actions .btn-danger { width: 100%; }
+.mystery-card {
+  width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 28px; padding: 16px; display: flex; flex-direction: column; gap: 14px;
+  box-shadow: 0 18px 40px rgba(0,0,0,0.20);
+}
+.mystery-card-img-wrap {
+  width: 100%; min-height: 190px; border-radius: 22px; overflow: hidden;
+  position: relative; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12);
+}
+.mystery-card-name { font-family: 'Unbounded', sans-serif; font-size: 1.25rem; line-height: 1.05; }
+.mystery-card-note { font-size: 0.72rem; letter-spacing: 1.6px; }
+
+.card-cell {
+  position: relative; cursor: pointer; background: var(--surface2); border: 1px solid var(--border); border-radius: 18px;
+  display: grid; grid-template-rows: 1fr auto; min-height: 84px; padding: 0; text-align: center;
+  transition: all 0.2s; user-select: none; -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
+}
+.card-cell:active { transform: scale(0.98); }
+.card-cell.selected { border-color: var(--cyan); background: rgba(0, 245, 212, 0.12); box-shadow: 0 0 10px rgba(0, 245, 212, 0.2), inset 0 0 6px rgba(0, 245, 212, 0.08); }
+.card-cell.eliminated { opacity: 0.25; filter: grayscale(100%); cursor: not-allowed; }
+.card-cell.locked { cursor: not-allowed; opacity: 0.6; pointer-events: none;}
+.card-cell .card-img-wrap { width: 100%; height: 100%; position: relative; overflow: hidden; border-radius: 18px 18px 0 0; }
+.card-cell .card-img-placeholder { font-size: 2rem; }
+.card-cell .secret-card-info { width: 100%; padding: 5px 7px 7px; display: flex; flex-direction: column; gap: 1px; align-items: flex-start; }
+.card-cell .secret-card-info .card-top-label { color: rgba(255,255,255,0.92); font-size: 0.70rem; font-weight: 700; }
+.card-cell .secret-card-info .card-bot-label { color: rgba(255,255,255,0.65); font-size: 0.62rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.card-cell .info-trigger-btn { position: absolute; bottom: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%; background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.18); backdrop-filter: blur(4px); color: var(--cyan); font-size: 0.78rem; display: flex; align-items: center; justify-content: center; }
+.card-cell .info-trigger-btn:hover { transform: translateY(-1px); }
+.card-cell.accuse-target { border-color: var(--red); background: rgba(255, 60, 92, 0.2); box-shadow: 0 0 15px rgba(255, 60, 92, 0.4); animation: pulseRed 1s infinite alternate; }
+
+@keyframes pulseRed { from { box-shadow: 0 0 5px rgba(255,60,92,0.4); } to { box-shadow: 0 0 20px rgba(255,60,92,0.8); } }
+
+.cell-emoji { font-size: min(6vh, 2.8rem); line-height: 1; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4)); }
+.cell-name { font-size: min(2vh, 0.75rem); line-height: 1.1; margin-top: 6px; font-weight: 600; color: rgba(255,255,255,0.85); text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+
+.turn-indicator { font-size: 0.85rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--cyan); text-align: center; background: rgba(0,245,212,0.1); padding: 8px; border-radius: 10px; }
+.turn-indicator.enemy { color: var(--red); background: rgba(255,60,92,0.1); }
+.turn-indicator.blink { animation: blink-turn 1.5s ease-in-out infinite; }
+@keyframes blink-turn { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+.my-target-wrap { display: flex; justify-content: center; }
+.my-target-label { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+
+.mystery-card {
+  width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 28px; padding: 18px; display: flex; flex-direction: column; gap: 16px;
+  box-shadow: 0 18px 60px rgba(0,0,0,0.2);
+}
+.mystery-card-img-wrap {
+  width: 100%; min-height: 220px; border-radius: 24px; overflow: hidden;
+  position: relative; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12);
+}
+.mystery-card-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mystery-card-image-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0.4) 100%); }
+.mystery-card-emoji { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 4.5rem; color: rgba(255,255,255,0.9); text-shadow: 0 6px 20px rgba(0,0,0,0.35); }
+.mystery-card-info { width: 100%; text-align: center; display: flex; flex-direction: column; gap: 6px; }
+.mystery-card-name { font-family: 'Unbounded', sans-serif; font-size: 1.5rem; font-weight: 900; line-height: 1.1;
+  background: linear-gradient(135deg, var(--cyan), var(--violet)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.mystery-card-note { font-size: 0.78rem; letter-spacing: 1.8px; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.mystery-info-btn {
+  position: absolute; top: 12px; right: 12px; width: 36px; height: 36px;
+  border-radius: 14px; border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.08);
+  color: var(--cyan); font-size: 1rem; font-weight: 700; cursor: pointer;
+}
+
+/* Зображення в сайдбарі та на екрані результатів Таємниці */
+.sidebar-img-circle {
+  width: 70px; height: 70px; border-radius: 50%; object-fit: cover;
+  background: rgba(255,255,255,0.05); border: 2px solid var(--cyan);
+  box-shadow: 0 0 15px rgba(0,245,212,0.3); display: none; margin: 4px 0;
+}
+.res-img {
+  width: 100%; height: 100%; border-radius: 0; object-fit: cover;
+  background: rgba(255,255,255,0.05); border: none; display: none;
+}
+
+.status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--cyan); animation: pulse-dot 1.5s ease-in-out infinite; }
+@keyframes pulse-dot { 0%, 100% { opacity: 0.3; transform:scale(0.8);} 50% { opacity: 1; transform:scale(1.2);} }
+
+@media (max-width: 980px) {
+  .mystery-layout {
+    flex-direction: row;
+    gap: 14px;
+    padding: 14px;
+    min-height: calc(100vh - var(--screen-pt) - var(--screen-pb) - 20px);
+  }
+  .mystery-grid-wrap {
+    max-width: calc(100% - 300px);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    padding: 12px;
+    max-height: calc(100vh - 150px);
+  }
+  .mystery-sidebar {
+    flex: 0 0 300px;
+    min-width: 260px;
+    max-width: 300px;
+    padding: 16px;
+  }
+  #mystery-instruction-wrap { margin-bottom: 10px; }
+  .mystery-sidebar-body { flex: 1 1 auto; min-height: 0; }
+  .card-cell .card-img-wrap { aspect-ratio: 1 / 1; }
+  .card-cell .secret-card-info { padding: 10px 8px 10px; }
+  .cell-emoji { font-size: min(4.5vh, 2rem); }
+  .cell-name { font-size: min(2.2vh, 0.72rem); }
+}
+
+@media (max-width: 760px) {
+  .mystery-layout { flex-direction: column; align-items: stretch; }
+  .mystery-grid-wrap { grid-template-columns: 1fr; max-width: 100%; max-height: calc(55vh); }
+  .mystery-sidebar { width: 100%; min-width: 0; flex: none; }
+  .mystery-actions { margin-top: 14px; }
+}
+
+@media (max-width: 640px) {
+  .mystery-grid-wrap { grid-template-columns: 1fr; max-height: calc(50vh); overflow-y: auto; }
+  .card-cell { border-radius: 18px; }
+  .card-cell .info-trigger-btn { bottom: 10px; right: 10px; width: 30px; height: 30px; }
+  .mystery-sidebar { padding: 14px; }
+  .mystery-card-img-wrap { min-height: 180px; }
+  .mystery-actions { gap: 10px; }
+}
+</style>
+</head>
+<body>
+
+<div class="portrait-lock" id="portraitLock">
+  <div class="portrait-lock-icon">📱</div>
+  <div class="portrait-lock-text" id="lock-text">Будь ласка, поверніть пристрій горизонтально</div>
+</div>
+
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
+
+<!-- MAIN MENU -->
+<div id="screen-main-menu" class="screen active">
+  <div class="main-menu-container">
+    <div style="text-align: center; margin-bottom: 20px;">
+      <div style="font-family: 'Unbounded', sans-serif; font-size: 2.2rem; font-weight: 900; background: linear-gradient(135deg, var(--cyan), var(--violet)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 8px;">🕵️‍♂️ PartyBox</div>
+      <div style="font-size: 0.85rem; color: var(--muted); letter-spacing: 1px;" id="menu-subtitle">Оберіть гру</div>
+    </div>
+    
+    <div class="game-mode-card spy-mode" onclick="selectGame('spy')">
+      <div class="game-mode-icon">🕵️‍♂️</div>
+      <div class="game-mode-title" id="menu-spy-title">Шпигун</div>
+      <div class="game-mode-desc" id="menu-spy-desc">Локальна гра для компанії на одному пристрої</div>
+    </div>
+    
+    <div class="game-mode-card secret-mode" onclick="selectGame('secret')">
+      <div class="game-mode-icon">🎭</div>
+      <div class="game-mode-title" id="menu-secret-title">Таємниця</div>
+      <div class="game-mode-desc" id="menu-secret-desc">Мережева гра 1 на 1. Відгадай персонажа супротивника</div>
+    </div>
+  </div>
+</div>
+
+<!-- SECRET ROLE SELECTION -->
+<div id="screen-secret-role-choice" class="screen">
+  <div class="main-menu-container">
+    <div style="text-align: center; margin-bottom: 18px;">
+      <div style="font-family: 'Unbounded', sans-serif; font-size: 1.9rem; font-weight: 900; background: linear-gradient(135deg, var(--cyan), var(--violet)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 8px;" id="role-title">Оберіть роль</div>
+      <div style="font-size: 0.85rem; color: var(--muted); letter-spacing: 1px;" id="role-subtitle">Створіть кімнату або підключіться</div>
+    </div>
+    <div class="game-mode-card spy-mode" onclick="chooseSecretHost()">
+      <div class="game-mode-icon">🏠</div>
+      <div class="game-mode-title" id="role-host-title">Створити гру (Хост)</div>
+    </div>
+    <div class="game-mode-card secret-mode" onclick="chooseSecretGuest()">
+      <div class="game-mode-icon">👤</div>
+      <div class="game-mode-title" id="role-guest-title">Підключитися (Гість)</div>
+    </div>
+  </div>
+</div>
+
+<header>
+  <div class="header-logo" style="flex: 1;"><span id="header-title">🕵️‍♂️ SPY</span></div>
+  <div class="header-actions">
+    <button class="header-btn" id="btn-back-menu" style="display: none;" onclick="backToMenu()">← Меню</button>
+    <button class="header-btn" onclick="openModal('rulesModal')" id="btn-rules" style="display: none;">Правила</button>
+    <button class="header-btn" onclick="toggleLanguage()" id="btn-lang-toggle" style="color: var(--cyan); display: none;">UA</button>
+  </div>
+</header>
+
+<!-- SPY SETUP -->
+<div id="screen-setup" class="screen">
+  <div class="glass setup-card">
+    <div class="section-label" id="setup-label-players">Кількість гравців</div>
+    <div class="stepper">
+      <button onclick="changeCount(-1)">−</button>
+      <div class="val" id="player-count">5</div>
+      <button onclick="changeCount(1)">+</button>
+    </div>
+    <div class="spy-hint mt8" id="setup-spy-hint">Шпигунів: <strong id="spy-count-hint">1</strong> &nbsp;(1 на кожні 3 гравці)</div>
+    
+    <div class="mt24" id="cats-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-shrink:0;">
+        <div class="section-label" id="setup-label-categories" style="margin-bottom:0">Категорії</div>
+        <button class="btn-ghost" id="btn-select-all" style="padding:6px 14px; font-size:0.75rem; width:auto; border-radius:10px;" onclick="toggleAll()">Обрати всі</button>
+      </div>
+      <div class="cats-wrapper">
+        <div class="cats" id="cats-container"></div>
+      </div>
+    </div>
+    
+    <div class="mt24" style="flex-shrink:0">
+      <button class="btn-primary" id="btn-start-deal" onclick="startGame()">Почати роздачу ролей</button>
+    </div>
+  </div>
+</div>
+
+<!-- SPY DEAL -->
+<div id="screen-deal" class="screen screen-center">
+  <div class="deal-wrap">
+    <div class="glass prompt-box" id="deal-prompt">
+      <div class="player-badge" id="deal-player-name">Гравець 1</div>
+      <div class="prompt-text" id="deal-prompt-text">Візьми пристрій, інші відверніться</div>
+      <button class="btn-primary" id="btn-open-card-init" onclick="openCard()">Відкрити карту</button>
+    </div>
+    
+    <div class="flip-scene" id="flip-scene" style="display:none">
+      <div class="flip-card" id="flip-card">
+        <div class="flip-face flip-front" onclick="openCard()">
+          <div class="front-pattern"></div>
+          <div class="front-glow"></div>
+          <div class="front-icon"></div>
+          <div class="front-label" id="text-tap-open">Натисніть щоб відкрити</div>
+        </div>
+        <div class="flip-face flip-back" id="flip-back"></div>
+      </div>
+    </div>
+    
+    <div class="deal-actions" id="deal-actions" style="display:none">
+      <button class="btn-ghost" id="btn-close-card" onclick="closeCard()">Закрити карту</button>
+      <button class="btn-primary" style="background:rgba(255,255,255,0.06);color:var(--muted);border:1px solid var(--border2);box-shadow:none;" onclick="confirmAbort()" id="btn-restart-action">Почати заново</button>
+    </div>
+  </div>
+</div>
+
+<!-- SPY FINAL -->
+<div id="screen-final" class="screen screen-center">
+  <div class="glass final-card">
+    <span class="final-icon">🎭</span>
+    <div class="final-title" id="final-title">Всі ролі роздано.<br>Гру розпочато!</div>
+    <div class="final-stats">
+      <div class="stat-chip"><strong id="final-players">5</strong><span id="label-stat-players">Гравців</span></div>
+      <div class="stat-chip"><strong id="final-spies">1</strong><span id="label-stat-spies">Шпигунів</span></div>
+    </div>
+    <div class="final-sub" id="final-description">Обговорюйте та знайдіть шпигуна.</div>
+    <button class="btn-primary" id="btn-new-game-restart" onclick="resetGame()">Нова гра</button>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-content glass" style="text-align: center;">
+    <div class="modal-title" id="confirm-title">Почати заново?</div>
+    <div style="color: var(--muted); margin-bottom: 28px; font-size: 0.95rem;" id="confirm-desc">Всі ролі будуть скинуті.</div>
+    <div style="display: flex; gap: 12px;">
+      <button class="btn-ghost" style="padding: 14px;" onclick="closeModal('confirmModal')" id="btn-cancel">Скасувати</button>
+      <button class="btn-primary btn-danger" style="padding: 14px;" onclick="executeRestart()" id="btn-confirm">Так</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="rulesModal">
+  <div class="modal-content glass">
+    <button class="close-modal-btn" onclick="closeModal('rulesModal')">×</button>
+    <div class="modal-title" id="modal-rules-title">Правила гри</div>
+    <div class="rules-scroll" id="modal-rules-body"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="infoModal">
+  <div class="modal-content glass">
+    <button class="close-modal-btn" onclick="closeModal('infoModal')">×</button>
+    <div class="modal-title" id="modal-info-title">Опис персонажа</div>
+    <div class="rules-scroll" style="text-align:center;" id="modal-info-body"></div>
+  </div>
+</div>
+
+<!-- SECRET LOBBY HOST -->
+<div id="screen-secret-lobby-host" class="screen">
+  <div class="glass setup-card" id="host-setup-view">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <button class="header-btn" onclick="switchScreen('screen-secret-role-choice')" style="padding: 4px 10px; border: none; background: rgba(255,255,255,0.1)">← Назад</button>
+      <div class="section-label" style="margin: 0;" id="label-host-setup">Створити гру</div>
+    </div>
+    <p id="host-instruction" style="color: var(--muted); font-size: 0.8rem; margin-bottom: 10px; text-align: center;">Оберіть категорії (У грі буде 16 карток)</p>
+    
+    <div id="secret-cats-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-shrink:0;">
+        <div class="section-label" style="margin-bottom:0" id="label-host-cats">Категорії</div>
+        <button class="btn-ghost" style="padding:6px 14px; font-size:0.75rem; width: auto; border-radius:10px;" onclick="toggleAllMysteryCats()" id="btn-host-all">Обрати всі</button>
+      </div>
+      <div class="cats-wrapper">
+        <div class="cats" id="secret-cats-container"></div>
+      </div>
+    </div>
+    
+    <div class="mt24" style="flex-shrink: 0;">
+      <button class="btn-primary" onclick="generateSecretRoomCode()" id="btn-generate-room">Згенерувати кімнату</button>
+    </div>
+  </div>
+
+  <div class="glass setup-card auto-height-card screen-center" id="host-lobby-view" style="display: none; padding: 40px 24px;">
+    <div class="section-label" style="text-align: center;" id="label-host-code">Код кімнати:</div>
+    <div class="huge-code" id="room-code-display">------</div>
+    <p style="color: var(--muted); text-align: center; margin-bottom: 20px; line-height: 1.5;" id="text-host-share">Передайте цей код другому гравцю.</p>
+    
+    <div id="host-wait-group" style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:20px;">
+      <div class="status-dot"></div>
+      <span id="label-waiting-players">Очікування підключення...</span>
+    </div>
+    <div id="host-connected-group" style="display:none;text-align:center;font-size:0.85rem;color:var(--cyan);font-weight:bold;margin-bottom:20px;">
+      ✓ Гравець підключився!
+    </div>
+    
+    <button class="btn-primary" id="btn-start-secret-game" style="display:none; width:100%;" onclick="startSecretGame()">Почати гру</button>
+    <button class="btn-ghost mt24" onclick="cancelSecretLobby()" id="btn-host-cancel">Скасувати</button>
+  </div>
+</div>
+
+<!-- SECRET LOBBY GUEST -->
+<div id="screen-secret-lobby-guest" class="screen screen-center">
+  <div class="glass setup-card auto-height-card" style="padding: 40px 24px;">
+    <div style="display: flex; justify-content: flex-start; margin-bottom: 20px;">
+      <button class="header-btn" onclick="switchScreen('screen-secret-role-choice')" style="padding: 4px 10px; border: none; background: rgba(255,255,255,0.1)">← Назад</button>
+    </div>
+    <div class="section-label" style="text-align: center;" id="label-guest-code">Введіть код кімнати</div>
+    <input type="text" class="input-code mt16" id="room-code-input" placeholder="000000" maxlength="6">
+    <button class="btn-primary mt24" onclick="joinGame()" id="btn-join-game">Підключитися</button>
+    <div id="join-status" style="color: var(--cyan); text-align: center; margin-top: 15px; font-size: 0.9rem; font-weight: bold;"></div>
+  </div>
+</div>
+
+<!-- SECRET GAMEPLAY -->
+<div id="screen-secret-game" class="screen" style="padding: env(safe-area-inset-top, 0) 0 0 0;">
+  <div class="mystery-layout">
+    <div class="mystery-grid-wrap" id="cards-grid">
+      <!-- Generated via JS -->
+    </div>
+
+    <div class="mystery-sidebar">
+      <div class="turn-indicator blink" id="turn-indicator">ОЧІКУВАННЯ...</div>
+      
+      <div class="my-target-wrap" id="mystery-my-char-wrap" style="display:none;">
+        <div class="mystery-card">
+          <div class="mystery-card-img-wrap">
+            <img src="" id="mystery-my-char-img" class="mystery-card-img" alt="">
+            <div class="mystery-card-image-overlay"></div>
+            <div class="mystery-card-emoji" id="mystery-my-char-emoji">?</div>
+            <button class="mystery-info-btn" id="btn-myst-info" type="button">i</button>
+          </div>
+          <div class="mystery-card-info">
+            <div class="my-target-label" id="label-my-target">Ви загадали:</div>
+            <div class="mystery-card-name" id="mystery-my-char-name">Ім'я</div>
+            <div class="mystery-card-note">НЕ КАЖИ ІМ'Я ВГОЛОС</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mystery-sidebar-body">
+        <p style="color: var(--text); font-size: 0.9rem; line-height: 1.4; text-align:center;" id="mystery-instruction-wrap">
+          Оберіть персонажа на полі, якого будете загадувати.
+        </p>
+      </div>
+
+      <div class="mystery-actions">
+        <button class="btn-primary" id="btn-myst-ready" onclick="sendMysteryReady()">Я ГОТОВИЙ</button>
+        <button class="btn-ghost" id="btn-myst-end-turn" style="display:none;" onclick="endSecretTurn()">Завершити хід</button>
+        <button class="btn-danger btn-primary" id="btn-myst-accuse" style="display:none;" onclick="toggleAccuseMode()">ЗВИНУВАТИ</button>
+        <button class="btn-ghost" style="padding: 8px; font-size: 0.75rem; border:none; background: transparent; color:var(--muted);" onclick="surrenderSecretGame()" id="btn-myst-surrender">Здатися</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECRET FINAL RESULT -->
+<div id="screen-secret-result" class="screen screen-center">
+  <div class="glass result-card">
+    <div class="result-header">
+      <span id="result-icon" class="result-icon">🏆</span>
+      <div id="result-title" class="result-title">Перемога</div>
+      <div id="result-message" class="result-message">Ви вгадали правильно персонажа і виграли раунд.</div>
+    </div>
+
+    <div class="result-grid">
+      <div class="result-panel">
+        <div id="res-lbl-mine" class="result-panel-label">Ваш вибір</div>
+        <div class="result-panel-img">
+          <div id="res-my-emoji" class="result-panel-emoji">❓</div>
+          <img src="" id="res-my-img" alt="Ваш вибір">
+        </div>
+        <div id="res-my-name" class="result-panel-name">-</div>
+      </div>
+      <div class="result-panel">
+        <div id="res-lbl-opp" class="result-panel-label">Вибір ворога</div>
+        <div class="result-panel-img">
+          <div id="res-opp-emoji" class="result-panel-emoji">❓</div>
+          <img src="" id="res-opp-img" alt="Вибір ворога">
+        </div>
+        <div id="res-opp-name" class="result-panel-name">-</div>
+      </div>
+    </div>
+
+    <button class="btn-primary result-button" onclick="backToMenu()" id="btn-res-menu">В головне меню</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════
+//  LOCALIZATION DICTIONARY & FULL DATABASE
+// ════════════════════════════════════════════
+const TRANSLATIONS = {
+  ru: {
+    langBtn: "UA", rulesBtn: "Правила", menuSubtitle: "Выберите игру",
+    menuSpyTitle: "Шпион", menuSpyDesc: "Локальная игра для компании на одном устройстве",
+    menuSecretTitle: "Тайна", menuSecretDesc: "Сетевая игра 1 на 1. Угадай персонажа противника",
+    roleTitle: "Выберите роль", roleSubtitle: "Создайте комнату или подключитесь",
+    roleHost: "Создать игру (Хост)", roleGuest: "Подключиться (Гость)",
+    setupPlayers: "Количество игроков", setupSpyHint: "Шпионов: <strong>{N}</strong> &nbsp;(1 на каждые 3 игрока)",
+    setupCategories: "Категории", selectAll: "Выбрать все", deselectAll: "Снять все",
+    startBtn: "Начать раздачу ролей", playerBadge: "Игрок {N}",
+    promptTake: "Возьми устройство, остальные отвернитесь", promptPass: "Передай устройство следующему",
+    openCardBtn: "Открыть карту", tapToOpen: "Нажми чтобы открыть", closeCardBtn: "Закрыть карту",
+    finishHandoutBtn: "Завершить раздачу", restartBtn: "Начать заново",
+    abortConfirmTitle: "Начать заново?", abortConfirmDesc: "Все роли будут сброшены.", cancelBtn: "Отмена", confirmBtn: "Да",
+    youAreSpy: "Ты Шпион!", spyTask: "Угадай персонажа по подсказкам", spyBadge: "Секретный агент",
+    finalTitle: "Все роли розданы.<br>Игра началась!", finalPlayers: "Игроков", finalSpies: "Шпионов",
+    finalDesc: "Обсуждайте и найдите шпиона среди вас.", newGameBtn: "Новая игра",
+    noCategoryError: "Выбери хотя бы одну категорию!", rulesModalTitle: "Правила игры", characterYour: "Твой персонаж", characterWarn: "Не говори имя вслух",
+    secretHostSetup: "Создать игру", secretHostCats: "Категории", secretHostCode: "Код комнаты:", secretHostShare: "Передайте этот код другу.",
+    secretWaitMsg: "Ожидание подключения...", secretConnectedMsg: "✓ Игрок подключен!", secretGuestCode: "Введите код комнаты",
+    secretConnectBtn: "Подключиться", secretGenerateBtn: "Сгенерировать комнату", secretStartBtn: "Начать игру",
+    secretReadyBtn: "Я ГОТОВ", secretEndTurnBtn: "Завершить ход", secretAccuseBtn: "ОБВИНИТЬ", secretCancelAccuseBtn: "ОТМЕНИТЬ ОБВИНЕНИЕ",
+    secretSurrenderBtn: "Сдаться", secretBackMenuBtn: "В главное меню",
+    secretInstrPick: "Выберите персонажа на поле, которого будете загадывать.",
+    secretInstrWaitReady: "Ожидаем готовности противника...",
+    secretInstrMyTurn: "Ваш ход. Задайте вопрос вслух и исключайте персонажей.",
+    secretInstrEnemyTurn: "Ход противника. Отвечайте на его вопросы.",
+    secretInstrAccuseMode: "Режим обвинения! Выберите персонажа, которого загадал противник.",
+    turnWait: "ОЖИДАНИЕ...", turnMine: "ТВОЙ ХОД", turnEnemy: "ХОД ПРОТИВНИКА",
+    resWinTitle: "ВЫ ПОБЕДИЛИ!", resLoseTitle: "ВЫ ПРОИГРАЛИ!", resWinMsg: "Отличная догадка!", resLoseMsg: "Противник оказался умнее.",
+    resMyChoice: "Ваш выбор", resOppChoice: "Выбор врага", lockText: "Пожалуйста, поверните устройство горизонтально",
+    rulesContent: `<h4>🎯 Цель</h4><ul><li><b>Мирным:</b> вычислить шпиона.</li><li><b>Шпиону:</b> угадать персонажа.</li></ul><h4>🔄 Ход</h4><ul><li>Называйте один факт по кругу.</li></ul>`
+  },
+  ua: {
+    langBtn: "RU", rulesBtn: "Правила", menuSubtitle: "Оберіть гру",
+    menuSpyTitle: "Шпигун", menuSpyDesc: "Локальна гра для компанії на одному пристрої",
+    menuSecretTitle: "Таємниця", menuSecretDesc: "Мережева гра 1 на 1. Відгадай персонажа супротивника",
+    roleTitle: "Оберіть роль", roleSubtitle: "Створіть кімнату або підключіться",
+    roleHost: "Створити гру (Хост)", roleGuest: "Підключитися (Гість)",
+    setupPlayers: "Кількість гравців", setupSpyHint: "Шпигунів: <strong>{N}</strong> &nbsp;(1 на кожні 3 гравці)",
+    setupCategories: "Категорії", selectAll: "Обрати всі", deselectAll: "Зняти всі",
+    startBtn: "Почати роздачу ролей", playerBadge: "Гравець {N}",
+    promptTake: "Візьми пристрій, інші відверніться", promptPass: "Передай пристрій наступному",
+    openCardBtn: "Відкрити карту", tapToOpen: "Натисни щоб відкрити", closeCardBtn: "Закрити карту",
+    finishHandoutBtn: "Завершити роздачу", restartBtn: "Почати заново",
+    abortConfirmTitle: "Почати заново?", abortConfirmDesc: "Всі ролі будуть скинуті.", cancelBtn: "Скасувати", confirmBtn: "Так",
+    youAreSpy: "Ти Шпигун!", spyTask: "Відгадай персонажа за підказками", spyBadge: "Таємний агент",
+    finalTitle: "Всі ролі роздані.<br>Гру розпочато!", finalPlayers: "Гравців", finalSpies: "Шпигунів",
+    finalDesc: "Обговорюйте та знайдіть шпигуна серед вас.", newGameBtn: "Нова гра",
+    noCategoryError: "Обери хоча б одну категорію!", rulesModalTitle: "Правила гри", characterYour: "Твій персонаж", characterWarn: "Не кажи ім'я вголос",
+    secretHostSetup: "Створити гру", secretHostCats: "Категорії", secretHostCode: "Код кімнати:", secretHostShare: "Передайте цей код другові.",
+    secretWaitMsg: "Очікування підключення...", secretConnectedMsg: "✓ Гравець підключений!", secretGuestCode: "Введіть код кімнати",
+    secretConnectBtn: "Підключитися", secretGenerateBtn: "Згенерувати кімнату", secretStartBtn: "Почати гру",
+    secretReadyBtn: "Я ГОТОВИЙ", secretEndTurnBtn: "Завершити хід", secretAccuseBtn: "ОБВИНУВАТИ", secretCancelAccuseBtn: "СКАСУВАТИ ОБВИНУВАЧЕННЯ",
+    secretSurrenderBtn: "Здатися", secretBackMenuBtn: "В головне меню",
+    secretInstrPick: "Оберіть персонажа на полі, якого будете загадувати.",
+    secretInstrWaitReady: "Очікуємо готовності супротивника...",
+    secretInstrMyTurn: "Ваш хід. Задайте питання вголос та виключайте персонажів.",
+    secretInstrEnemyTurn: "Хід супротивника. Відповідайте на його питання.",
+    secretInstrAccuseMode: "Режим обвинувачення! Оберіть персонажа, якого загадав супротивник.",
+    turnWait: "ОЧІКУВАННЯ...", turnMine: "ТВІЙ ХІД", turnEnemy: "ХІД СУПРОТИВНИКА",
+    resWinTitle: "ВИ ПЕРЕМОГЛИ!", resLoseTitle: "ВИ ПРОГРАЛИ!", resWinMsg: "Чудова здогадка!", resLoseMsg: "Супротивник виявився розумнішим.",
+    resMyChoice: "Ваш вибір", resOppChoice: "Вибір ворога", lockText: "Будь ласка, поверніть пристрій горизонтально",
+    rulesContent: `<h4>🎯 Мета</h4><ul><li><b>Мирним:</b> вирахувати шпигуна.</li><li><b>Шпигуну:</b> вгадати персонажа.</li></ul><h4>🔄 Хід</h4><ul><li>Називайте один факт по колу.</li></ul>`
+  }
+};
+
+const CATEGORIES = [
+  {
+    id: 'movies', icon: '🎬', nameRU: 'Фильмы и Сериалы', nameUA: 'Фільми та Серіали',
+    chars: [
+      { nameRU: 'Агент Смит', nameUA: 'Агент Сміт', wiki: 'Agent_Smith', emoji: '🕶️', descRU: 'Главная программа-антагонист в виртуальном мире Матрицы.', descUA: 'Головна програма-антагоніст у віртуальному світі Матриці.' },
+      { nameRU: 'Аладдин', nameUA: 'Аладдін', wiki: 'Aladdin_(Disney_character)', emoji: '🧞‍♂️', descRU: 'Уличный воришка из Аграбы, нашедший волшебную лампу с Джинном.', descUA: 'Вуличний злодюжка з Аграби, який знайшов чарівну лампу з Джином.' },
+      { nameRU: 'Алиса', nameUA: 'Аліса', wiki: 'Alice_(Alice_in_Wonderland)', emoji: '🐇', descRU: 'Любопытная девочка, провалившаяся в кроличую нору в Страну Чудес.', descUA: 'Цікава дівчинка, яка провалилася в кролячу нору в Країну Див.' },
+      { nameRU: 'Арья Старк', nameUA: 'Ар\'я Старк', wiki: 'Arya_Stark', emoji: '🗡️', descRU: 'Отважная безликая воительница и младшая дочь лорда Эддарда Старка.', descUA: 'Відважна безлика войовниця та молодша донька лорда Еддарда Старка.' },
+      { nameRU: 'Барни Стинсон', nameUA: 'Барні Стінсон', wiki: 'Barney_Stinson', emoji: '👔', descRU: 'Харизматичный любитель костюмов и лазертага из "Как я встретил вашу маму".', descUA: 'Харизматичний любитель костюмів та лазертагу з "Як я зустрів вашу маму".' },
+      { nameRU: 'Барт Симпсон', nameUA: 'Барт Сімпсон', wiki: 'Bart_Simpson', emoji: '🛹', descRU: 'Хулиган и непоседа со скейтбордом, старший сын Гомера и Мардж.', descUA: 'Хуліган та непосида зі скейтбордом, старший син Гомера та Мардж.' },
+      { nameRU: 'Белоснежка', nameUA: 'Білосніжка', wiki: 'Snow_White_(Disney_character)', emoji: '🍎', descRU: 'Принцесса, скрывавшаяся в лесу у семи гномов от злой мачехи.', descUA: 'Принцеса, яка переховувалася в лісі у семи гномів від злої мачухи.' },
+      { nameRU: 'Бэтмен', nameUA: 'Бетмен', wiki: 'Batman', emoji: '🦇', descRU: 'Брюс Уэйн, миллиардер, защищающий Готэм под маской летучей мыши.', descUA: 'Брюс Вейн, мільярдер, що захищає Готем під масою кажана.' },
+      { nameRU: 'Валли', nameUA: 'Валл-і', wiki: 'WALL-E_(character)', emoji: '🤖', descRU: 'Трогательный робот-мусорщик, оставшийся на заброшенной Земле.', descUA: 'Зворушливий робот-сміттяр, який залишився на занедбаній Землі.' },
+      { nameRU: 'Венсдей Аддамс', nameUA: 'Венздей Аддамс', wiki: 'Wednesday_Addams', emoji: '🖤', descRU: 'Готичная и хмурая девочка с косичками из семейки Аддамс.', descUA: 'Готична та похмура дівчинка з кісками з сімейки Аддамс.' },
+      { nameRU: 'Вито Корлеоне', nameUA: 'Віто Корлеоне', wiki: 'Vito_Corleone', emoji: '🌹', descRU: 'Дон мафии, Крестный отец, глава влиятельного криминального клана.', descUA: 'Дон мафії, Хрещений батько, глава впливового кримінального клану.' },
+      { nameRU: 'Волан-де-Морт', nameUA: 'Волан-де-Морт', wiki: 'Lord_Voldemort', emoji: '🐍', descRU: 'Темный лорд, чье имя боятся называть все волшебники.', descUA: 'Темний лорд, чиє ім\'я бояться називати всі чарівники.' },
+      { nameRU: 'Гандальф', nameUA: 'Гендальф', wiki: 'Gandalf', emoji: '🧙‍♂️', descRU: 'Могущественный старый волшебник и один из защитников Средиземья.', descUA: 'Могутній старий чарівник та один із захисників Середзем\'я.' },
+      { nameRU: 'Ганнибал Лектер', nameUA: 'Ганнібал Лектер', wiki: 'Hannibal_Lecter', emoji: '🍷', descRU: 'Гениальный судебный психиатр, эстет и серийный убийца-каннибал.', descUA: 'Геніальний судовий психіатр, естет і серійний вбивця-канібал.' },
+      { nameRU: 'Гарри Поттер', nameUA: 'Гаррі Поттер', wiki: 'Harry_Potter_(character)', emoji: '⚡', descRU: 'Мальчик, который выжил, великий волшебник со шрамом-молнией.', descUA: 'Хлопчик, який вижив, видатний чарівник зі шрамом-блискавкою.' },
+      { nameRU: 'Гермиона Грейнджер', nameUA: 'Герміона Ґрейнджер', wiki: 'Hermione_Granger', emoji: '📚', descRU: 'Самая умная и прилежная ученица Хогвартса, подруга Гарри.', descUA: 'Найрозумніша та найстаранніша учениця Гоґвортсу, подруга Гаррі.' },
+      { nameRU: 'Гладиатор', nameUA: 'Гладіатор', wiki: 'Maximus_Decimus_Meridius', emoji: '🛡️', descRU: 'Максимус, римский полководец, ставший гладиатором на арене Колизея.', descUA: 'Максимус, римський полководець, який став гладіатором на арені Колізею.' },
+      { nameRU: 'Гомер Симпсон', nameUA: 'Гомер Сімпсон', wiki: 'Homer_Simpson', emoji: '🍩', descRU: 'Отец семейства Симпсонов, обожающий пиво и пончики на АЭС.', descUA: 'Батько сімейства Сімпсонів, який обожнює пиво та пончики на АЕС.' },
+      { nameRU: 'Гомес Аддамс', nameUA: 'Гомес Аддамс', wiki: 'Gomez_Addams', emoji: '🤵', descRU: 'Эксцентричный миллиардер и страстный глава семейки Аддамс.', descUA: 'Ексцентричний мільярдер та пристрасний глава сімейки Аддамс.' },
+      { nameRU: 'Гринч', nameUA: 'Грінч', wiki: 'Grinch', emoji: '💚', descRU: 'Зеленое волосатое существо, ненавидевшее Рождество.', descUA: 'Зелена волохата істота, яка ненавиділа Різдво.' },
+      { nameRU: 'Дамблдор', nameUA: 'Дамблдор', wiki: 'Albus_Dumbledore', emoji: '🧙', descRU: 'Величайший директор школы Хогвартс с длинной бородой.', descUA: 'Найвеличніший директор школи Гоґвортс із довгою бородою.' },
+      { nameRU: 'Дарт Вейдер', nameUA: 'Дарт Вейдер', wiki: 'Darth_Vader', emoji: '⚔️', descRU: 'Бывший джедай Энакин Скайуокер, перешедший на Темную сторону Силы.', descUA: 'Колишній джедай Енакін Скайвокер, який перейшов на Темну сторону Сили.' },
+      { nameRU: 'Дейенерис Таргариен', nameUA: 'Дієнеріс Таргарієн', wiki: 'Daenerys_Targaryen', emoji: '🐉', descRU: 'Мать драконов, разрушительница оков и королева Семи Королевств.', descUA: 'Мати драконів, руйнівниця кайданів та королева Семи Королівств.' },
+      { nameRU: 'Декстер Морган', nameUA: 'Декстер Морган', wiki: 'Dexter_Morgan', emoji: '🩸', descRU: 'Судебно-медицинский эксперт, охотящийся на маньяков по ночам.', descUA: 'Судово-медичний експерт, який полює на маніяків ночами.' },
+      { nameRU: 'Джеймс Бонд', nameUA: 'Джеймс Бонд', wiki: 'James_Bond', emoji: '🕴️', descRU: 'Легендарный британский шпион под кодовым номером 007.', descUA: 'Легендарний британський шпигун під кодовим номером 007.' },
+      { nameRU: 'Джейк Перальта', nameUA: 'Джейк Перальта', wiki: 'Jake_Peralta', emoji: '🚓', descRU: 'Инфантильный, но гениальный детектив из участка Бруклин 9-9.', descUA: 'Інфантильний, але геніальний детектив із відділку Бруклін 9-9.' },
+      { nameRU: 'Джейме Ланнистер', nameUA: 'Джеймі Ланністер', wiki: 'Jaime_Lannister', emoji: '🦁', descRU: 'Цареубийца, великолепный рыцарь с золотой рукой.', descUA: 'Царевбивця, чудовий лицар із золотою рукою.' },
+      { nameRU: 'Джейсон Борн', nameUA: 'Джейсон Борн', wiki: 'Jason_Bourne', emoji: '🏃‍♂️', descRU: 'Бывший агент ЦРУ, потерявший память и ищущий правду о себе.', descUA: 'Колишній агент ЦРУ, який втратив пам\'ять і шукає правду про себе.' },
+      { nameRU: 'Джек Воробей', nameUA: 'Джек Горобець', wiki: 'Jack_Sparrow', emoji: '🏴‍☠️', descRU: 'Капитан и легендарный пират Карибского моря.', descUA: 'Капітан та легендарний пірат Карибського моря.' },
+      { nameRU: 'Джесси Пинкман', nameUA: 'Джессі Пінкман', wiki: 'Jesse_Pinkman', emoji: '💊', descRU: 'Напарник Уолтера Уайта из сериала "Во все тяжкие".', descUA: 'Напарник Волтера Вайта із серіалу "Пуститися берега".' },
+      { nameRU: 'Джои Триббиани', nameUA: 'Джої Тріббіані', wiki: 'Joey_Tribbiani', emoji: '🍕', descRU: 'Актер-итальянец, любящий еду и фразу "How you doin?".', descUA: 'Актор-італієць, який обожнює їжу та фразу "How you doin?".' },
+      { nameRU: 'Джон Макклейн', nameUA: 'Джон Макклейн', wiki: 'John_McClane', emoji: '🏢', descRU: 'Полицейский-одиночка, спасающий заложников в небоскребе.', descUA: 'Поліцейський-одинак, який рятує заручників у хмарочосі.' },
+      { nameRU: 'Джон Сноу', nameUA: 'Джон Сноу', wiki: 'Jon_Snow_(character)', emoji: '🐺', descRU: 'Бастард лорда Старка, а может и нет.', descUA: 'Бастард лорда Старка, а можливо і ні.' },
+      { nameRU: 'Джон Уик', nameUA: 'Джон Вік', wiki: 'John_Wick', emoji: '🔫', descRU: 'Баба Яга, неудержимый киллер, мстящий за свою собаку.', descUA: 'Баба Яга, нестримний кілер, який мстить за свого собаку.' },
+      { nameRU: 'Джокер', nameUA: 'Джокер', wiki: 'Joker_(DC_Comics)', emoji: '🃏', descRU: 'Сумасшедший преступник-клоун, заклятый враг Бэтмена.', descUA: 'Божевільний злочинець-клоун, заклятий ворог Бетмена.' },
+      { nameRU: 'Диана Принс', nameUA: 'Діана Принс', wiki: 'Wonder_Woman', emoji: '👑', descRU: 'Чудо-Женщина, амазонка-воительница из Лиги Справедливости.', descUA: 'Диво-Жінка, амазонка-войовниця з Ліги Справедливості.' },
+      { nameRU: 'Доктор Браун', nameUA: 'Доктор Браун', wiki: 'Emmett_Brown', emoji: '⚡', descRU: 'Эмметт Браун, создатель машины времени на базе ДеЛореан.', descUA: 'Емметт Браун, творець машини часу на базі ДеЛореан.' },
+      { nameRU: 'Доктор Ватсон', nameUA: 'Доктор Ватсон', wiki: 'John_Watson', emoji: '🩺', descRU: 'Верный соратник и биограф сыщика Шерлока Холмса.', descUA: 'Вірний соратник та біограф нишпорки Шерлока Холмса.' },
+      { nameRU: 'Доктор Стрэндж', nameUA: 'Доктор Стрендж', wiki: 'Doctor_Strange', emoji: '🌀', descRU: 'Верховный маг Земли, защищающий реальность во вселенной Marvel.', descUA: 'Верховний маг Землі, який захищає реальність у всесвіті Marvel.' },
+      { nameRU: 'Доктор Хаус', nameUA: 'Доктор Хаус', wiki: 'Gregory_House', emoji: '🩼', descRU: 'Гениальный врач-диагност, циник, страдающий хромотой.', descUA: 'Геніальний лікар-діагност, цинік, який страждає на кульгавість.' },
+      { nameRU: 'Дон Дрейпер', nameUA: 'Дон Дрейпер', wiki: 'Don_Draper', emoji: '🥃', descRU: 'Загадочный и харизматичный креативный директор агентства Безумцы.', descUA: 'Загадковий і харизматичний креативний директор агентства Божевільні.' },
+      { nameRU: 'Драко Малфой', nameUA: 'Драко Мелфой', wiki: 'Draco_Malfoy', emoji: '🍏', descRU: 'Слизеринец, высокомерный противник Гарри Поттера в школе.', descUA: 'Слизеринець, зарозумілий суперник Гаррі Поттера в школі.' },
+      { nameRU: 'Дуайт Шрут', nameUA: 'Дуайт Шрут', wiki: 'Dwight_Schrute', emoji: '👓', descRU: 'Лучший помощник регионального менеджера в Dunder Mifflin.', descUA: 'Найкращий помічник регіонального менеджера в Dunder Mifflin.' },
+      { nameRU: 'Дэдпул', nameUA: 'Дедпул', wiki: 'Deadpool', emoji: '⚔️', descRU: 'Болтливый наемник в красной маске с черным юмором.', descUA: 'Балакучий найманець у червоній масці з чорним гумором.' },
+      { nameRU: 'Дэрил Диксон', nameUA: 'Деріл Діксон', wiki: 'Daryl_Dixon', emoji: '🏹', descRU: 'Выживший с арбалетом из сериала Ходячие мертвецы.', descUA: 'Уцілілий з арбалетом із серіалу Ходячі мерці.' },
+      { nameRU: 'Железный Человек', nameUA: 'Залізна Людина', wiki: 'Iron_Man', emoji: '🦾', descRU: 'Миллиардер Тони Старк, создавший костюм-броню.', descUA: 'Мільярдер Тоні Старк, який створив костюм-броню.' },
+      { nameRU: 'Золушка', nameUA: 'Попелюшка', wiki: 'Cinderella_(Disney_character)', emoji: '👠', descRU: 'Девушка, потерявшая хрустальную туфельку на балу у принца.', descUA: 'Дівчина, яка загубила кришталевий черевичок на балу у принца.' },
+      { nameRU: 'Индиана Джонс', nameUA: 'Індіана Джонс', wiki: 'Indiana_Jones', emoji: '🤠', descRU: 'Знаменитый археолог в шляпе и с хлыстом.', descUA: 'Знаменитий археолог у капелюсі та з батогом.' },
+      { nameRU: 'Итан Хант', nameUA: 'Итан Хант', wiki: 'Ethan_Hunt', emoji: '🧗‍♂️', descRU: 'Специалист по невыполнимым миссиям в международной разведке.', descUA: 'Спеціаліст із нездійсненних місій у міжнародній розвідці.' },
+      { nameRU: 'Кайло Рен', nameUA: 'Кайло Рен', wiki: 'Kylo_Ren', emoji: '🔴', descRU: 'Лидер Первого Ордена, внук Дарта Вейдера.', descUA: 'Лідер Першого Ордена, онук Дарта Вейдера.' },
+      { nameRU: 'Капитан Америка', nameUA: 'Капітан Америка', wiki: 'Captain_America', emoji: '🛡️', descRU: 'Стив Роджерс, суперсолдат со щитом из вибраниума.', descUA: 'Стів Роджерс, суперсолдат із щитом із вібраніуму.' },
+      { nameRU: 'Карлсон', nameUA: 'Карлсон', wiki: 'Karlsson-on-the-Roof', emoji: '🛸', descRU: 'Мужчина в расцвете сил с пропеллером на спине.', descUA: 'Чоловік у розквіті сил із пропелером на спині.' },
+      { nameRU: 'Katniss Everdeen', nameUA: 'Кітнісс Евердін', wiki: 'Katniss_Everdeen', emoji: '🏹', descRU: 'Сойка-пересмешница, участница Голодных игр.', descUA: 'Переспівниця, учасниця Голодних ігор.' },
+      { nameRU: 'Кевин Маккаллистер', nameUA: 'Кевін Маккаллістер', wiki: 'Kevin_McCallister', emoji: '🏡', descRU: 'Мальчик, оставшийся один дома на Рождество и победивший воров.', descUA: 'Хлопчик, який залишився один удома на Різдво та переміг злодіїв.' },
+      { nameRU: 'Кларк Кент', nameUA: 'Кларк Кент', wiki: 'Superman', emoji: '👓', descRU: 'Скромный журналист, скрывающий личность Супермена.', descUA: 'Скромний журналіст, який приховує особистість Супермена.' },
+      { nameRU: 'Кот в сапогах', nameUA: 'Кіт у чоботях', wiki: 'Puss_in_Boots_(Shrek)', emoji: '🐱', descRU: 'Отважный кот со шпагой и умилительным взглядом.', descUA: 'Відважний кіт зі шпагою та зворушливим поглядом.' },
+      { nameRU: 'Крамер', nameUA: 'Крамер', wiki: 'Cosmo_Kramer', emoji: '🚪', descRU: 'Эксцентричный сосед Джеффа Сайнфелда с безумными идеями.', descUA: 'Ексцентричний сусід Джеффа Сайнфелда з божевільними ідеями.' },
+      { nameRU: 'Леон Профессионал', nameUA: 'Леон Професіонал', wiki: 'Leon:_The_Professional', emoji: '🌱', descRU: 'Молчаливый киллер, спасший девочку Матильду.', descUA: 'Мовчазний кілер, який врятував дівчинку Матильду.' },
+      { nameRU: 'Логан', nameUA: 'Логан', wiki: 'Wolverine_(character)', emoji: '爪', descRU: 'Росомаха, мутант со скелетом из адамантия.', descUA: 'Росомаха, мутант зі скелетом з адамантію.' },
+      { nameRU: 'Люк Скайуокер', nameUA: 'Люк Скайвокер', wiki: 'Luke_Skywalker', emoji: '🟢', descRU: 'Рыцарь-джедай, сын Энакина Скайуокера.', descUA: 'Лицар-джедай, син Енакіна Скайвокера.' },
+      { nameRU: 'Mad Max', nameUA: 'Шалений Макс', wiki: 'Max_Rockatansky', emoji: '🚗', descRU: 'Макс Рокатански, воин дорог в постапокалиптической пустоши.', descUA: 'Макс Рокатанські, воїн доріг у постапокаліптичній пустці.' },
+      { nameRU: 'Майкл Майерс', nameUA: 'Майкл Маєрс', wiki: 'Michael_Myers_(Halloween)', emoji: '🔪', descRU: 'Безмолвный маньяк в белой маске из фильма Хэллоуин.', descUA: 'Безмовний маніяк у білій масці з фільму Гелловін.' },
+      { nameRU: 'Майкл Скотт', nameUA: 'Майкл Скотт', wiki: 'Michael_Scott_(The_Office)', emoji: '👔', descRU: 'Босс офиса Dunder Mifflin, мастер неловких шуток.', descUA: 'Бос офісу Dunder Mifflin, майстер ніякових жартів.' },
+      { nameRU: 'Мандалорец', nameUA: 'Мандалорець', wiki: 'The_Mandalorian_(character)', emoji: '🪖', descRU: 'Дин Джерин, охотник за головами, оберегающий Грогу.', descUA: 'Дін Джерин, мисливець за головами, який оберігає Грогу.' },
+      { nameRU: 'Марти Макфлай', nameUA: 'Марті Макфлай', wiki: 'Marty_McFly', emoji: '🛹', descRU: 'Подросток, путешествующий во времени вместе с Доком.', descUA: 'Підліток, який подорожує в часі разом із Доком.' },
+      { nameRU: 'Мастер Йода', nameUA: 'Магістр Йода', wiki: 'Yoda', emoji: '🟢', descRU: 'Мудрый и могущественный гранд-мастер Ордена Джедаев.', descUA: 'Мудрий та могутній гранд-майстер Ордена Джедаїв.' },
+      { nameRU: 'Маугли', nameUA: 'Мауглі', wiki: 'Mowgli', emoji: '🌴', descRU: 'Человеческий ребенок, воспитанный волками в джунглях Индии.', descUA: 'Людська дитина, вихована вовками в джунглях Індії.' },
+      { nameRU: 'Морти Смит', nameUA: 'Морті Сміт', wiki: 'Morty_Smith', emoji: '👦', descRU: 'Внук Рика Санчеза, постоянно путешествующий по вселенным.', descUA: 'Онук Ріка Санчеза, який постійно подорожує всесвітами.' },
+      { nameRU: 'Морфеус', nameUA: 'Морфей', wiki: 'Morpheus_(The_Matrix)', emoji: '🕶️', descRU: 'Капитан корабля Навуходоносор, веривший в Избранного.', descUA: 'Капітан корабля Навуходоносор, який вірив в Обраного.' },
+      { nameRU: 'Муфаса', nameUA: 'Муфаса', wiki: 'Mufasa', emoji: '🦁', descRU: 'Отец Симбы, мудрый правитель Земель Прайда.', descUA: 'Батько Сімби, мудрий правитель Земель Прайду.' },
+      { nameRU: 'Мэрилин Монро', nameUA: 'Мерілін Монро', wiki: 'Marilyn_Monroe', emoji: '💋', descRU: 'Культовая актриса и секс-символ 1950-х годов.', descUA: 'Культова акторка та секс-символ 1950-х років.' },
+      { nameRU: 'Нед Старк', nameUA: 'Нед Старк', wiki: 'Ned_Stark', emoji: '🐺', descRU: 'Честный хранитель Севера и глава дома Старков.', descUA: 'Чесний хранитель Півночі та голова дому Старків.' },
+      { nameRU: 'Нео', nameUA: 'Нео', wiki: 'Neo_(The_Matrix)', emoji: '💊', descRU: 'Томас Андерсон, избранный спаситель человечества в Матрице.', descUA: 'Томас Андерсон, обраний рятівник людства в Матриці.' },
+      { nameRU: 'Оби-Ван Кеноби', nameUA: 'Обі-Ван Кенобі', wiki: 'Obi-Wan_Kenobi', emoji: '🔵', descRU: 'Мастер-джедай, учитель Энакина и Люка Скайуокеров.', descUA: 'Майстер-джедай, учитель Енакіна та Люка Скайвокерів.' },
+      { nameRU: 'Осёл (Шрек)', nameUA: 'Віслюк (Шрек)', wiki: 'Donkey_(Shrek)', emoji: '🐴', descRU: 'Болтливый и веселый лучший друг огра Шрека.', descUA: 'Балакучий та веселий найкращий друг огра Шрека.' },
+      { nameRU: 'Остин Пауэрс', nameUA: 'Остін Паверс', wiki: 'Austin_Powers_(character)', emoji: '🤓', descRU: 'Международный человек-загадка, эксцентричный британский агент.', descUA: 'Міжнародна людина-загадка, ексцентричний британський агент.' },
+      { nameRU: 'Пабло Эскобар', nameUA: 'Пабло Ескобар', wiki: 'Pablo_Escobar', emoji: '💵', descRU: 'Колумбийский наркобарон, основатель Медельинского картеля.', descUA: 'Колумбійський наркобарон, засновник Медельїнського картелю.' },
+      { nameRU: 'Патрик Бейтман', nameUA: 'Патрік Бейтман', wiki: 'Patrick_Bateman', emoji: '🪓', descRU: 'Успешный банкир и психопат из Американского психопата.', descUA: 'Успішний банкір і психопат з Американського психопата.' },
+      { nameRU: 'Питер Гриффин', nameUA: 'Пітер Гріффін', wiki: 'Peter_Griffin', emoji: '👑', descRU: 'Глуповатый и веселый глава семьи из Куахога.', descUA: 'Дурнуватий та веселий голова родини з Куахога.' },
+      { nameRU: 'Питер Пэн', nameUA: 'Пітер Пен', wiki: 'Peter_Pan', emoji: '🧚‍♂️', descRU: 'Мальчик, который не хочет взрослеть, из Нетландии.', descUA: 'Хлопчик, який не хоче дорослішати, з Нетландії.' },
+      { nameRU: 'Пиноккио', nameUA: 'Піноккіо', wiki: 'Pinocchio', emoji: '🤥', descRU: 'Деревянная кукла, у которой растет нос при вранье.', descUA: 'Дерев\'яна лялька, у якої росте ніс під час брехні.' },
+      { nameRU: 'Принцесса Лея', nameUA: 'Принцеса Лея', wiki: 'Princess_Leia', emoji: '👑', descRU: 'Лидер Альянса Повстанцев, сестра Люка Скайуокера.', descUA: 'Лідер Альянсу Повстанців, сестра Люка Скайвокера.' },
+      { nameRU: 'Расти Коул', nameUA: 'Расті Коул', wiki: 'Rust_Cohle', emoji: '🚬', descRU: 'Детектив-нигилист с мрачной философией из Настоящего детектива.', descUA: 'Детектив-нігіліст із похмурою філософією зі Справжнього детективу.' },
+      { nameRU: 'Рей', nameUA: 'Рей', wiki: 'Rey_(Star_Wars)', emoji: '🟡', descRU: 'Мусорщица со свалки, ставшая могущественным джедаем.', descUA: 'Сміттярка зі звалища, яка стала могутнім джедаєм.' },
+      { nameRU: 'Рик Граймс', nameUA: 'Рік Граймс', wiki: 'Rick_Grimes', emoji: '🤠', descRU: 'Лидер выживших в зомби-апокалипсисе, бывший шериф.', descUA: 'Лідер уцілілих у зомбі-апокаліпсисі, колишній шериф.' },
+      { nameRU: 'Рик Санчез', nameUA: 'Рік Санчез', wiki: 'Rick_Sanchez', emoji: '🧪', descRU: 'Безумный гениальный ученый-алкоголик, дедушка Морти.', descUA: 'Божевільний геніальний вчений-алкоголік, дідусь Морті.' },
+      { nameRU: 'Рокки Бальбоа', nameUA: 'Роккі Бальбоа', wiki: 'Rocky_Balboa', emoji: '🥊', descRU: 'Итальянский жеребец, легендарный боксер из Филадельфии.', descUA: 'Італійський жеребець, легендарний боксер із Філадельфії.' },
+      { nameRU: 'Рон Уизли', nameUA: 'Рон Візлі', wiki: 'Ron_Weasley', emoji: '🧹', descRU: 'Рыжий лучший друг Гарри Поттера из многодетной семьи.', descUA: 'Рудий найкращий друг Гаррі Поттера з багатодітної родини.' },
+      { nameRU: 'Росс Геллер', nameUA: 'Росс Геллер', wiki: 'Ross_Geller', emoji: '🦕', descRU: 'Палеонтолог из Друзей, трижды разведенный фанат динозавров.', descUA: 'Палеонтолог із Друзів, тричі розлучений фанат динозаврів.' },
+      { nameRU: 'Северус Снейп', nameUA: 'Северус Снейп', wiki: 'Severus_Snape', emoji: '🧪', descRU: 'Загадочный профессор зельеварения с трагичной судьбой.', descUA: 'Загадковий професор зілляваріння з трагічною долею.' },
+      { nameRU: 'Серсея Ланнистер', nameUA: 'Серсея Ланністер', wiki: 'Cersei_Lannister', emoji: '👑', descRU: 'Хитрая и безжалостная королева Семи Королевств.', descUA: 'Хитра та безжальна королева Семи Королівств.' },
+      { nameRU: 'Симба', nameUA: 'Сімба', wiki: 'Simba', emoji: '🦁', descRU: 'Сын Муфасы, изгнанный принц, вернувшийся занять трон.', descUA: 'Син Муфаси, вигнаний принц, який повернувся зайняти трон.' },
+      { nameRU: 'Стюи Гриффин', nameUA: 'Стьюї Гріффін', wiki: 'Stewie_Griffin', emoji: '👶', descRU: 'Младенец-гений с британским акцентом, мечтающий захватить мир.', descUA: 'Немовля-геній із британським акцентом, яке мріє захопити світ.' },
+      { nameRU: 'Тайлер Дёрден', nameUA: 'Тайлер Дьорден', wiki: 'Tyler_Durden', emoji: '🧼', descRU: 'Продавец мыла, анархист и альтер-эго рассказчика Бойцовского клуба.', descUA: 'Продавець мила, анархіст та альтер-его оповідача Бійцівського клубу.' },
+      { nameRU: 'Тарзан', nameUA: 'Тарзан', wiki: 'Tarzan', emoji: '🐒', descRU: 'Человек, воспитанный обезьянами в африканских джунглях.', descUA: 'Чоловік, вихований мавпами в африканських джунглях.' },
+      { nameRU: 'Тирион Ланнистер', nameUA: 'Тіріон Ланністер', wiki: 'Tyrion_Lannister', emoji: '🍷', descRU: 'Умный карлик, любящий вино и книги, советник королевы.', descUA: 'Розумний карлик, який любить вино та книги, радник королеви.' },
+      { nameRU: 'Томми Шелби', nameUA: 'Томмі Шелбі', wiki: 'Tommy_Shelby', emoji: '🚬', descRU: 'Лидер Острых козырьков, хладнокровный гангстер из Бирмингема.', descUA: 'Лідер Гострих козирків, холоднокровний гангстер із Бірмінгема.' },
+      { nameRU: 'Тони Монтана', nameUA: 'Тоні Монтана', wiki: 'Tony_Montana', emoji: '🔫', descRU: 'Кубинский эмигрант, ставший наркобароном в Майами.', descUA: 'Кубинський емігрант, який став наркобароном у Маямі.' },
+      { nameRU: 'Тони Сопрано', nameUA: 'Тоні Сопрано', wiki: 'Tony_Soprano', emoji: '🚬', descRU: 'Босс мафии из Нью-Джерси, посещающий психотерапевта.', descUA: 'Бос мафії з Нью-Джерсі, який відвідує психотерапевта.' },
+      { nameRU: 'Тор', nameUA: 'Тор', wiki: 'Thor_(Marvel_Comics)', emoji: '⚡', descRU: 'Асгардский бог грома из Мстителей.', descUA: 'Асгардський бог грому з Месників.' },
+      { nameRU: 'Трэвис Бикл', nameUA: 'Тревіс Бікл', wiki: 'Travis_Bickle', emoji: '🚕', descRU: 'Таксист-ветеран, сходящий с ума в ночном Нью-Йорке.', descUA: 'Таксист-ветеран, який божеволіє в нічному Нью-Йорку.' },
+      { nameRU: 'Тринити', nameUA: 'Трініті', wiki: 'Trinity_(The_Matrix)', emoji: '🕶️', descRU: 'Программист-хакер, старший офис корабля Навуходоносор.', descUA: 'Програміст-хакер, старший офіцер корабля Навуходоносор.' },
+      { nameRU: 'Уолтер Собчак', nameUA: 'Волтер Собчак', wiki: 'Walter_Sobchak', emoji: '🎳', descRU: 'Нестабильный ветеран Вьетнама, друг Большого Лебовски.', descUA: 'Нестабільний ветеран В\'єтнаму, друг Великого Лебовські.' },
+      { nameRU: 'Уолтер Уайт', nameUA: 'Волтер Вайт', wiki: 'Walter_White', emoji: '🧪', descRU: 'Хайзенберг, школьный учитель химии, начавший варить мет.', descUA: 'Гайзенберг, шкільний вчитель хімії, який почав варити мет.' },
+      { nameRU: 'Фиби Буффе', nameUA: 'Фібі Буффе', wiki: 'Phoebe_Buffay', emoji: '🎸', descRU: 'Самая странная и веселая из Друзей, поющая про драного кота.', descUA: 'Найдивніша та найвеселіша з Друзів, яка співає про драного кота.' },
+      { nameRU: 'Форрест Гамп', nameUA: 'Форрест Гамп', wiki: 'Forrest_Gump_(character)', emoji: '🏃‍♂️', descRU: 'Добродушный парень со сложной судьбой, пробежавший Америку.', descUA: 'Добродушний хлопець зі складною долею, який пробіг Америку.' },
+      { nameRU: 'Фредди Крюгер', nameUA: 'Фредді Крюгер', wiki: 'Freddy_Krueger', emoji: '🧤', descRU: 'Убийца в полосатом свитере, преследующий людей в их снах.', descUA: 'Вбивця в смугастому светрі, який переслідує людей у їхніх снах.' },
+      { nameRU: 'Фрэнк Андервуд', nameUA: 'Френк Андервуд', wiki: 'Frank_Underwood_(House_of_Cards)', emoji: '🇺🇸', descRU: 'Безжалостный политик, идущий по головам к президентству США.', descUA: 'Безжальний політик, який йде по головах до президентства США.' },
+      { nameRU: 'Furiosa', nameUA: 'Фуріоза', wiki: 'Imperator_Furiosa', emoji: '🔥', descRU: 'Однорукая воительница-император, восставшая против Несмертного Джо.', descUA: 'Однорука войовниця-імператор, яка повстала проти Несмертного Джо.' },
+      { nameRU: 'Geralt of Rivia', nameUA: 'Геральт із Ривії', wiki: 'Geralt_of_Rivia', emoji: '⚔️', descRU: 'Белый Волк, мутант-ведьмак, охотящийся на монстров.', descUA: 'Білий Вовк, мутант-відьмак, який полює на монстрів.' },
+      { nameRU: 'Хан Соло', nameUA: 'Хан Соло', wiki: 'Han_Solo', emoji: '🚀', descRU: 'Контрабандист, пилот тысячелетнего сокола в Звездных Войнах.', descUA: 'Контрабандист, пілот тисячолітнього сокола в Зоряних Війнах.' },
+      { nameRU: 'Homelander', nameUA: 'Патріот', wiki: 'Homelander', emoji: '🦸‍♂️', descRU: 'Эгоистичный и опасный супергерой, лидер Семерки.', descUA: 'Егоїстичний та небезпечний супергерой, лідер Сімки.' },
+      { nameRU: 'Человек-паук', nameUA: 'Людина-павук', wiki: 'Spider-Man', emoji: '🕷️', descRU: 'Питер Паркер, герой, летающий на паутине.', descUA: 'Пітер Паркер, герой, який літає на павутині.' },
+      { nameRU: 'Чубакка', nameUA: 'Чубакка', wiki: 'Chewbacca', emoji: '🐻', descRU: 'Преданный вуки, верный друг и второй пилот Хана Соло.', descUA: 'Відважний вукі, вірний друг і другий пілот Хана Соло.' },
+      { nameRU: 'Шелдон Купер', nameUA: 'Шелдон Купер', wiki: 'Sheldon_Cooper', emoji: '⚛️', descRU: 'Гениальный физик-теоретик со множеством странных привычек.', descUA: 'Геніальний фізик-теоретик із безліччю дивних звичок.' },
+      { nameRU: 'Шерлок Холмс', nameUA: 'Шерлок Холмс', wiki: 'Sherlock_Holmes', emoji: '🔍', descRU: 'Величайший лондонский детектив с методом дедукции.', descUA: 'Найвидатніший лондонський детектив із методом дедукції.' },
+      { nameRU: 'Шрек', nameUA: 'Шрек', wiki: 'Shrek_(character)', emoji: '🟢', descRU: 'Зеленый огр с болота, женившийся на принцессе Фионе.', descUA: 'Зелений огр із болота, який одружився з принцесою Фіолою.' },
+      { nameRU: 'Эдвард Руки-ножницы', nameUA: 'Едвард Руки-ножиці', wiki: 'Edward_Scissorhands_(character)', emoji: '✂️', descRU: 'Недоделанный киборг с ножницами вместо ладоней.', descUA: 'Недороблений кіборг із ножицями замість долонь.' },
+      { nameRU: 'Эйс Вентура', nameUA: 'Ейс Вентура', wiki: 'Ace_Ventura', emoji: '🦜', descRU: 'Эксцентричный детектив, специализирующийся на поиске животных.', descUA: 'Ексцентричний детектив, який спеціалізується на пошуку тварин.' },
+      { nameRU: 'Эллен Рипли', nameUA: 'Еллен Ріплі', wiki: 'Ellen_Ripley', emoji: '👽', descRU: 'Унтер-офицер, боровшаяся с Чужими в открытом космосе.', descUA: 'Унтер-офіцер, яка боролася з Чужими у відкритому космосі.' },
+      { nameRU: 'Эрик Картман', nameUA: 'Ерік Картман', wiki: 'Eric_Cartman', emoji: '🔴', descRU: 'Эгоистичный и агрессивный школьник из Южного Парка.', descUA: 'Егоїстичний та агресивний школяр із Південного Парку.' }
+    ]
+  },
+  {
+    id: 'music', icon: '🎤', nameRU: 'Музыка', nameUA: 'Музика',
+    chars: [
+      { nameRU: '50 Cent', nameUA: '50 Cent', wiki: '50_Cent', emoji: '🪙', descRU: 'Знаменитый американский рэпер, переживший 9 выстрелов.', descUA: 'Знаменитий американський репер, який вижив після 9 пострілів.' },
+      { nameRU: 'Адель', nameUA: 'Адель', wiki: 'Adele', emoji: '🎶', descRU: 'Британская соул-певица с невероятным глубоким голосом.', descUA: 'Британська соул-співачка з неймовірним глибоким голосом.' },
+      { nameRU: 'RM (Ким Намджун)', nameUA: 'RM (Кім Намджун)', wiki: 'RM_(rapper)', emoji: '🐨', descRU: 'Лидер и главный рэпер всемирно известной K-pop группы BTS.', descUA: 'Лідер та головний репер всесвітньо відомої K-pop групи BTS.' },
+      { nameRU: 'Джин (Ким Сокджин)', nameUA: 'Джин (Кім Сокджин)', wiki: 'Jin_(singer)', emoji: '🐹', descRU: 'Старший участник группы BTS, вокалист с ангельским голосом.', descUA: 'Старший учасник групи BTS, вокаліст з ангельським голосом.' },
+      { nameRU: 'Шуга (Мин Юнги)', nameUA: 'Шуга (Мін Юнги)', wiki: 'Suga_(rapper)', emoji: '🐱', descRU: 'Рэпер и талантливый продюсер из корейской группы BTS.', descUA: 'Репер та талановитий продюсер із корейської групи BTS.' },
+      { nameRU: 'Джей-Хоуп (Чон Хосок)', nameUA: 'Джей-Хоуп (Чон Хосок)', wiki: 'J-Hope', emoji: '🐿️', descRU: 'Главный танцор и рэпер суперпопулярного бойз-бэнда BTS.', descUA: 'Головний танцюрист та репер суперпопулярного бойз-бенду BTS.' },
+      { nameRU: 'Чимин (Пак Чимин)', nameUA: 'Чимін (Пак Чимін)', wiki: 'Jimin', emoji: '🐥', descRU: 'Харизматичный вокалист и ведущий танцор группы BTS.', descUA: 'Харизматичний вокаліст та провідний танцюрист групи BTS.' },
+      { nameRU: 'Ви (Ким Тэхён)', nameUA: 'Ві (Кім Техьон)', wiki: 'V_(singer)', emoji: '🐯', descRU: 'Популярный вокалист BTS с глубоким и бархатным баритоном.', descUA: 'Популярний вокаліст BTS з глибоким та оксамитовим баритоном.' },
+      { nameRU: 'Чонгук (Чон Чонгук)', nameUA: 'Чонгук (Чон Чонгук)', wiki: 'Jungkook', emoji: '🐰', descRU: 'Золотой макнэ группы BTS, завоевавший мировые сольные чарты.', descUA: 'Золотий макне групи BTS, який завоював світові сольні чарти.' },
+      { nameRU: 'Moby', nameUA: 'Мобі', wiki: 'Moby', emoji: '👽', descRU: 'Культовый американский электронный музыкант и мультиинструменталист.', descUA: 'Культовий американський електронний музикант та мультиінструменталіст.' },
+      { nameRU: 'Alyona Alyona', nameUA: 'Alyona Alyona', wiki: 'Alyona_Alyona', emoji: '🎤', descRU: 'Украинская рэп-исполнительница, прославившаяся искренними текстами.', descUA: 'Українська реп-виконавиця, яка прославилася щирими текстами.' },
+      { nameRU: 'Алла Пугачева', nameUA: 'Алла Пугачова', wiki: 'Alla_Pugacheva', emoji: '🌹', descRU: 'Примадонна эстрады, легендарная советская и российская певица.', descUA: 'Примадонна естради, легендарна радянська та російська співачка.' },
+      { nameRU: 'Ариана Гранде', nameUA: 'Аріана Ґранде', wiki: 'Ariana_Grande', emoji: '🌙', descRU: 'Американская поп-дива с невероятным диапазоном в 4 октавы.', descUA: 'Американська поп-діва з неймовірним діапазоном у 4 октави.' },
+      { nameRU: 'Арета Франклин', nameUA: 'Арета Франклін', wiki: 'Aretha_Franklin', emoji: '👑', descRU: 'Королева соула, ставшая символом борьбы за гражданские права.', descUA: 'Королева соулу, яка стала символом боротьби за громадянські права.' },
+      { nameRU: 'Аксл Роуз', nameUA: 'Аксл Роуз', wiki: 'Axl_Rose', emoji: '🎸', descRU: 'Фронтмен рок-группы Guns N\' Roses с неподражаемым вокалом.', descUA: 'Фронтмен рок-гурту Guns N\' Roses з неповторним вокалом.' },
+      { nameRU: 'Бейонсе', nameUA: 'Бейонсе', wiki: 'Beyonc%C3%A9', emoji: '👑', descRU: 'Суперзвезда R&B, рекордсменка по количеству премий Грэмми.', descUA: 'Суперзірка R&B, рекордсменка за кількістю премій Греммі.' },
+      { nameRU: 'Билли Айлиш', nameUA: 'Біллі Айліш', wiki: 'Billie_Eilish', emoji: '🖤', descRU: 'Юная звезда поп-сцены с меланхоличным вкрадчивым вокалом.', descUA: 'Юна зірка поп-сцени з меланхолійним тихим вокалом.' },
+      { nameRU: 'Боб Дилан', nameUA: 'Боб Ділан', wiki: 'Bob_Dylan', emoji: '🎸', descRU: 'Легендарный бард, поэт, получивший Нобелевскую премию по литературе.', descUA: 'Легендарний бард, поет, який отримав Нобелівську премію з літератури.' },
+      { nameRU: 'Бритни Спирс', nameUA: 'Брітні Спірс', wiki: 'Britney_Spears', emoji: '🎀', descRU: 'Икона поп-музыки рубежа 2000-х годов.', descUA: 'Ікона поп-музики рубежу 2000-х років.' },
+      { nameRU: 'Брюс Спрингстин', nameUA: 'Брюс Спрінгстін', wiki: 'Bruce_Springsteen', emoji: '🎸', descRU: 'Легенда американского рока, известный как "The Boss".', descUA: 'Легенда американського року, відомий як "The Boss".' },
+      { nameRU: 'Бруно Марс', nameUA: 'Бруно Марс', wiki: 'Bruno_Mars', emoji: '🪐', descRU: 'Американский певец и танцор, возродивший ретро-фанк.', descUA: 'Американський співак і танцюрист, який відродив ретро-фанк.' },
+      { nameRU: 'Виктор Цой', nameUA: 'Віктор Цой', wiki: 'Viktor_Tsoi', emoji: '🎵', descRU: 'Лидер рок-группы Кино, кумир миллионов.', descUA: 'Лідер рок-гурту Кіно, кумир мільйонів.' },
+      { nameRU: 'Владимир Высоцкий', nameUA: 'Володимир Висоцький', wiki: 'Vladimir_Vysotsky', emoji: '✍️', descRU: 'Знаменитый советский поэт, актер и автор-исполнитель песен.', descUA: 'Видатний радянський поет, актор та автор-виконавець пісень.' },
+      { nameRU: 'Гарри Стайлс', nameUA: 'Гаррі Стайлс', wiki: 'Harry_Styles', emoji: '🍉', descRU: 'Экс-участник One Direction, яркий и эпатажный соло-артист.', descUA: 'Екс-учасник One Direction, яскравий та епатажний соло-артист.' },
+      { nameRU: 'Дженнифер Лопес', nameUA: 'Дженніфер Лопес', wiki: 'Jennifer_Lopez', emoji: '💃', descRU: 'Актриса и певица, знаменитая своими танцами и латино-хитами.', descUA: 'Акторка та співачка, відома своїми танцями та латино-хітами.' },
+      { nameRU: 'Джастин Бибер', nameUA: 'Джастін Бібер', wiki: 'Justin_Bieber', emoji: '👱‍♂️', descRU: 'Канадский поп-певец, ставший идолом молодежи в юном возрасте.', descUA: 'Канадський поп-співак, який став ідолом молоді в юному віці.' },
+      { nameRU: 'Джастин Тимберлейк', nameUA: 'Джастін Тімберлейк', wiki: 'Justin_Timberlake', emoji: '🎤', descRU: 'Экс-солист \'N Sync, успешный сольный певец и актер.', descUA: 'Екс-соліст \'N Sync, успішний сольний співак та актор.' },
+      { nameRU: 'Джамала', nameUA: 'Джамала', wiki: 'Jamala', emoji: '🇺🇦', descRU: 'Украинская певица крымскотатарского происхождения, выигравшая Евровидение.', descUA: 'Українська співачка кримськотатарського походження, яка виграла Євробачення.' },
+      { nameRU: 'Джеймс Хэтфилд', nameUA: 'Джеймс Гетфілд', wiki: 'James_Hetfield', emoji: '⚡', descRU: 'Фронтмен и вокалист великой хэви-метал группы Metallica.', descUA: 'Фронтмен та вокаліст великої хеві-метал групи Metallica.' },
+      { nameRU: 'Джимми Хендрикс', nameUA: 'Джимі Гендрікс', wiki: 'Jimi_Hendrix', emoji: '🎸', descRU: 'Виртуоз электрогитары, изменивший звучание рок-музыки.', descUA: 'Віртуоз електрогітари, який змінив звучання рок-музики.' },
+      { nameRU: 'Джим Моррисон', nameUA: 'Джим Моррісон', wiki: 'Jim_Morrison', emoji: '🦎', descRU: 'Загадочный поэт и харизматичный фронтмен группы The Doors.', descUA: 'Загадковий поет і харизматичний фронтмен групи The Doors.' },
+      { nameRU: 'Джон Леннон', nameUA: 'Джон Леннон', wiki: 'John_Lennon', emoji: '👓', descRU: 'Один из основателей The Beatles, легендарный борец за мир.', descUA: 'Один із засновників The Beatles, легендарний борець за мир.' },
+      { nameRU: 'Дима Билан', nameUA: 'Діма Білан', wiki: 'Dima_Bilan', emoji: '🌟', descRU: 'Популярный российский поп-исполнитель, победитель Евровидения.', descUA: 'Популярний російський поп-виконавець, переможець Євробачення.' },
+      { nameRU: 'Доктор Дре', nameUA: 'Доктор Дре', wiki: 'Dr._Dre', emoji: '🎧', descRU: 'Легендарный рэп-продюсер, открывший миру Эминема и Снуп Догга.', descUA: 'Легендарний реп-продюсер, який відкрив світові Емінема та Снуп Догга.' },
+      { nameRU: 'Дрейк', nameUA: 'Дрейк', wiki: 'Drake_(musician)', emoji: '🦉', descRU: 'Канадский рэпер, бьющий рекорды по прослушиваниям.', descUA: 'Канадський репер, який б\'є рекорди за прослуховуваннями.' },
+      { nameRU: 'Дуа Липа', nameUA: 'Дуа Ліпа', wiki: 'Dua_Lipa', emoji: '✨', descRU: 'Британская поп-дива албанского происхождения, королева диско-попа.', descUA: 'Британська поп-діва албанського походження, королева диско-попу.' },
+      { nameRU: 'Дэйв Грол', nameUA: 'Дейв Ґрол', wiki: 'Dave_Grohl', emoji: '🥁', descRU: 'Барабанщик Nirvana, создатель и лидер рок-группы Foo Fighters.', descUA: 'Барабанщик Nirvana, творець та лідер рок-групи Foo Fighters.' },
+      { nameRU: 'Дэвид Боуи', nameUA: 'Девід Бові', wiki: 'David_Bowie', emoji: '⚡', descRU: 'Хамелеон рок-музыки, создатель образа Зигги Стардаста.', descUA: 'Хамелеон рок-музики, творець образу Зіггі Стардаста.' },
+      { nameRU: 'Земфира', nameUA: 'Земфіра', wiki: 'Zemfira', emoji: '🎶', descRU: 'Российская рок-певица, олицетворение женского рока.', descUA: 'Російська рок-співачка, уособлення жіночого року.' },
+      { nameRU: 'Jay-Z', nameUA: 'Jay-Z', wiki: 'Jay-Z', emoji: '🎙️', descRU: 'Один из самых богатых и влиятельных рэп-магнатов, муж Бейонсе.', descUA: 'Один із найбагатших та найвпливовіших реп-магнатів, чоловік Бейонсе.' },
+      { nameRU: 'Jerry Heil', nameUA: 'Jerry Heil', wiki: 'Jerry_Heil', emoji: '🍎', descRU: 'Украинская певица, известная своими вирусными ироничными песнями.', descUA: 'Українська співачка, відома своїми вірусними іронічними піснями.' },
+      { nameRU: 'Злата Огнєвіч', nameUA: 'Злата Огнєвіч', wiki: 'Zlata_Ognevich', emoji: '🔥', descRU: 'Украинская поп-певица, финалистка Евровидения.', descUA: 'Українська поп-співачка, фіналістка Євробачення.' },
+      { nameRU: 'Канье Уэст', nameUA: 'Каньє Вест', wiki: 'Kanye_West', emoji: '🎹', descRU: 'Гениальный продюсер, рэпер и дизайнер бренда Yeezy.', descUA: 'Геніальний продюсер, репер та дизайнер бренду Yeezy.' },
+      { nameRU: 'Камалія', nameUA: 'Камалія', wiki: 'Kamaliya', emoji: '👑', descRU: 'Украинская певица и модель, обладательница титула Миссис Мира.', descUA: 'Українська співачка та модель, володарка титулу Місіс Світу.' },
+      { nameRU: 'Карди Би', nameUA: 'Карді Бі', wiki: 'Cardi_B', emoji: '🔥', descRU: 'Эксцентричная американская рэперша с яркой харизмой.', descUA: 'Ексцентрична американська реперка з яскравою харизмою.' },
+      { nameRU: 'Кендрик Ламар', nameUA: 'Кендрік Ламар', wiki: 'Kendrick_Lamar', emoji: '👑', descRU: 'Великий рэпер современности, лауреат Пулитцеровской премии.', descUA: 'Видатний репер сучасності, лауреат Пулітцерівської премії.' },
+      { nameRU: 'Кит Ричардс', nameUA: 'Кіт Річардс', wiki: 'Keith_Richards', emoji: '🎸', descRU: 'Бессменный гитарист легендарной рок-группы The Rolling Stones.', descUA: 'Беззмінний гітарист легендарного рок-гурту The Rolling Stones.' },
+      { nameRU: 'Кристина Агилера', nameUA: 'Крістіна Агілера', wiki: 'Christina_Aguilera', emoji: '💄', descRU: 'Американская поп-певица с мощным вокальным диапазоном.', descUA: 'Американська поп-співачка з потужним вокальним діапазоном.' },
+      { nameRU: 'Курт Кобейн', nameUA: 'Курт Кобейн', wiki: 'Kurt_Cobain', emoji: '🎸', descRU: 'Основатель и вокалист легендарной гранж-группы Nirvana.', descUA: 'Засновник та вокаліст легендарної гранж-групи Nirvana.' },
+      { nameRU: 'Кэти Перри', nameUA: 'Кеті Перрі', wiki: 'Katy_Perry', emoji: '🍭', descRU: 'Яркая поп-певица, автор хитов "I Kissed a Girl" и "Roar".', descUA: 'Яскрава поп-співачка, авторка хітів "I Kissed a Girl" та "Roar".' },
+      { nameRU: 'Леди Гага', nameUA: 'Леді Гага', wiki: 'Lady_Gaga', emoji: '🎭', descRU: 'Эпатажная певица и актриса, покорившая мир необычными образами.', descUA: 'Епатажна співачка та акторка, яка підкорила світ незвичайними образами.' },
+      { nameRU: 'Lizzo', nameUA: 'Lizzo', wiki: 'Lizzo', emoji: '🎺', descRU: 'Поп-исполнительница и флейтистка, пропагандирующая бодипозитив.', descUA: 'Поп-виконавиця та флейтистка, яка пропагує бодіпозитив.' },
+      { nameRU: 'Lil Wayne', nameUA: 'Lil Wayne', wiki: 'Lil_Wayne', emoji: '🎙️', descRU: 'Влиятельный американский рэпер, пионер южного хип-хопа.', descUA: 'Впливовий американський репер, піонер південного хіп-хопу.' },
+      { nameRU: 'Луи Армстронг', nameUA: 'Луї Армстронг', wiki: 'Louis_Armstrong', emoji: '🎺', descRU: 'Великий джазовый трубач и вокалист с хриплым голосом.', descUA: 'Видатний джазовий трубач та вокаліст із хрипким голосом.' },
+      { nameRU: 'Лучано Паваротти', nameUA: 'Лучано Паваротті', wiki: 'Luciano_Pavarotti', emoji: '🎵', descRU: 'Легендарный оперный тенор, один из Трех Теноров.', descUA: 'Легендарний оперний тенор, один із Трьох Тенорів.' },
+      { nameRU: 'Мадонна', nameUA: 'Мадонна', wiki: 'Madonna', emoji: '💃', descRU: 'Королева поп-музыки, законодательница моды на сцене.', descUA: 'Королева поп-музики, законодаввиця моди на сцені.' },
+      { nameRU: 'Майкл Джексон', nameUA: 'Майкл Джексон', wiki: 'Michael_Jackson', emoji: '🕺', descRU: 'Король поп-музыки, создатель лунной походки.', descUA: 'Король поп-музики, творець місячної ходи.' },
+      { nameRU: 'Майли Сайрус', nameUA: 'Майлі Сайрус', wiki: 'Miley_Cyrus', emoji: '👅', descRU: 'Певица и актриса, автор суперхита "Flowers".', descUA: 'Співачка та акторка, авторка суперхита "Flowers".' },
+      { nameRU: 'Макс Барських', nameUA: 'Макс Барських', wiki: 'Max_Barskih', emoji: '🌃', descRU: 'Украинский поп-певец и автор песен в стиле синти-поп.', descUA: 'Український поп-співак та автор пісень у стилі синті-поп.' },
+      { nameRU: 'Марайя Кэри', nameUA: 'Марая Кері', wiki: 'Mariah_Carey', emoji: '🎄', descRU: 'Певица, известная своим свистковым регистром и рождественским хитом.', descUA: 'Співачка, відома своїм свистковим регістром та різдвяним хітом.' },
+      { nameRU: 'Мегган Ти Сталлион', nameUA: 'Меган Ті Сталліон', wiki: 'Megan_Thee_Stallion', emoji: '🐎', descRU: 'Американская рэперша, обладательница премий Грэмми.', descUA: 'Американська реперка, володарка премій Греммі.' },
+      { nameRU: 'Мик Джаггер', nameUA: 'Мік Джаггер', wiki: 'Mick_Jagger', emoji: '👅', descRU: 'Харизматичный и пластичный вокалист группы The Rolling Stones.', descUA: 'Харизматичний та пластичний вокаліст групи The Rolling Stones.' },
+      { nameRU: 'MONATIK', nameUA: 'MONATIK', wiki: 'Monatik', emoji: '💫', descRU: 'Украинский певец, танцор и создатель зажигательных ритмов.', descUA: 'Український співак, танцюрист та творець запальних ритмів.' },
+      { nameRU: 'Монеточка', nameUA: 'Монеточка', wiki: 'Monetochka', emoji: '🪙', descRU: 'Российская инди-певица с тонким голосом и остроумными текстами.', descUA: 'Російська інді-співачка з тонким голосом та дотепними текстами.' },
+      { nameRU: 'Надя Дорофєєва', nameUA: 'Надя Дорофєєва', wiki: 'Nadia_Dorofeeva', emoji: '👗', descRU: 'Украинская поп-певица, экс-солистка группы Время и Стекло.', descUA: 'Українська поп-співачка, екс-солістка групи Время и Стекло.' },
+      { nameRU: 'Нина Симон', nameUA: 'Ніна Сімон', wiki: 'Nina_Simone', emoji: '🎹', descRU: 'Великая джазовая певица, пианистка и борец за свободу.', descUA: 'Видатна джазова співачка, піаністка та борець за свободу.' },
+      { nameRU: 'Ники Минаж', nameUA: 'Нікі Мінаж', wiki: 'Nicki_Minaj', emoji: '🦄', descRU: 'Королева рэпа, известная своими яркими образами и быстрой читкой.', descUA: 'Королева репу, відома своїми яскравими образами та швидкою читкою.' },
+      { nameRU: 'Оксимирон', nameUA: 'Оксімірон', wiki: 'Oxxxymiron', emoji: '🧠', descRU: 'Интеллектуальный рэпер, легенда рэп-баттлов в СНГ.', descUA: 'Інтелектуальний репер, легенда реп-баттлів у СНД.' },
+      { nameRU: 'Olivia Rodrigo', nameUA: 'Олівія Родріго', wiki: 'Olivia_Rodrigo', emoji: '💜', descRU: 'Молодая американская поп-рок певица, лауреат Грэмми.', descUA: 'Молода американська поп-рок співачка, лауреат Греммі.' },
+      { nameRU: 'Оля Полякова', nameUA: 'Оля Полякова', wiki: 'Olya_Polyakova', emoji: '👑', descRU: 'Суперблондинка украинской эстрады с длинными ногами.', descUA: 'Супербілявка української естради з довгими ногами.' },
+      { nameRU: 'Оззи Осборн', nameUA: 'Оззі Осборн', wiki: 'Ozzy_Osbourne', emoji: '🦇', descRU: 'Князь Тьмы, вокалист легендарной метал-группы Black Sabbath.', descUA: 'Князь Темряви, вокаліст легендарної метал-групи Black Sabbath.' },
+      { nameRU: 'Пинк', nameUA: 'Пінк', wiki: 'Pink_(singer)', emoji: '💖', descRU: 'Американская рок- и поп-певица с мощным голосом и акробатическими шоу.', descUA: 'Американська рок- та поп-співачка з потужним голосом та акробатичними шоу.' },
+      { nameRU: 'Пол Маккартни', nameUA: 'Пол Маккартні', wiki: 'Paul_McCartney', emoji: '🎸', descRU: 'Один из создателей The Beatles, легендарный мультиинструменталист.', descUA: 'Один із засновників The Beatles, легендарний мультиінструменталіст.' },
+      { nameRU: 'Post Malone', nameUA: 'Post Malone', wiki: 'Post_Malone', emoji: '🏆', descRU: 'Американский рэпер и певец с уникальным меланхоличным стилем.', descUA: 'Американський репер та співак з унікальним меланхолійним стилем.' },
+      { nameRU: 'Рианна', nameUA: 'Ріанна', wiki: 'Rihanna', emoji: '🌂', descRU: 'Barbadosskaya pevitsa, ikona stilya, osnovatel\'nitsa brenda Fenty.', descUA: 'Барбадоська співачка, ікона стилю, засновниця бренду Fenty.' },
+      { nameRU: 'Рэй Чарлз', nameUA: 'Рей Чарльз', wiki: 'Ray_Charles', emoji: '🕶️', descRU: 'Слепой гений соула, пианист и великий американский музыкант.', descUA: 'Сліпий геній соулу, піаніст та видатний американський музикант.' },
+      { nameRU: 'Руслана', nameUA: 'Руслана', wiki: 'Ruslana', emoji: '🔥', descRU: 'Украинская певица, победившая на Евровидении с "Дикими танцами".', descUA: 'Українська співачка, яка перемогла на Євробаченні з "Дикими танцями".' },
+      { nameRU: 'Sabrina Carpenter', nameUA: 'Сабріна Карпентер', wiki: 'Sabrina_Carpenter', emoji: '💋', descRU: 'Американская поп-певица, ставшая сенсацией с хитом "Espresso".', descUA: 'Американська поп-співачка, яка стала сенсацією з хітом "Espresso".' },
+      { nameRU: 'Сэм Смит', nameUA: 'Сем Сміт', wiki: 'Sam_Smith', emoji: '🏳️‍🌈', descRU: 'Британский соул-певец с бархатным вокалом и хитом "Stay with Me".', descUA: 'Британський соул-співак з оксамитовим вокалом та хітом "Stay with Me".' },
+      { nameRU: 'Святослав Вакарчук', nameUA: 'Святослав Вакарчук', wiki: 'Svyatoslav_Vakarchuk', emoji: '🎸', descRU: 'Лидер и вокалист легендарной украинской рок-группы Океан Ельзи.', descUA: 'Лідер та вокаліст легендарної української рок-групи Океан Ельзи.' },
+      { nameRU: 'Селена Гомес', nameUA: 'Селена Гомес', wiki: 'Selena_Gomez', emoji: '🌹', descRU: 'Поп-певица, актриса и звезда молодежных сериалов Disney.', descUA: 'Поп-співачка, акторка та зірка молодіжних серіалів Disney.' },
+      { nameRU: 'Скриптонит', nameUA: 'Скриптоніт', wiki: 'Scriptonite', emoji: '🎙️', descRU: 'Рэпер из Казахстана со своим уникальным и вязким стилем читки.', descUA: 'Репер із Казахстану зі своїм унікальним та в\'язким стилем читки.' },
+      { nameRU: 'Снуп Догг', nameUA: 'Снуп Догг', wiki: 'Snoop_Dogg', emoji: '💨', descRU: 'Американский рэпер, символ расслабленного стиля жизни.', descUA: 'Американський репер, символ розслабленого стилю життя.' },
+      { nameRU: 'Стиви Уандер', nameUA: 'Стіві Вандер', wiki: 'Stevie_Wonder', emoji: '🎹', descRU: 'Слепой американский мультиинструменталист, легенда соула.', descUA: 'Сліпий американський мультиінструменталіст, легенда соулу.' },
+      { nameRU: 'SZA', nameUA: 'SZA', wiki: 'SZA', emoji: '🥀', descRU: 'Американская R&B певица, покорившая чарты альбомом SOS.', descUA: 'Американська R&B співачка, яка підкорила чарти альбомом SOS.' },
+      { nameRU: 'Таїсія Повалій', nameUA: 'Таїсія Повалій', wiki: 'Taisiya_Povaliy', emoji: '🎤', descRU: 'Эстрадная певица советской и украинской эпохи.', descUA: 'Естрадна співачка радянської та української епохи.' },
+      { nameRU: 'Тейлор Свифт', nameUA: 'Тейлор Свіфт', wiki: 'Taylor_Swift', emoji: '🐍', descRU: 'Главная мировая поп-звезда современности, бьющая рекорды.', descUA: 'Головна світова поп-зірка сучасності, яка б\'є рекорди.' },
+      { nameRU: 'The Notorious B.I.G.', nameUA: 'The Notorious B.I.G.', wiki: 'The_Notorious_B.I.G.', emoji: '👑', descRU: 'Легенда рэпа Восточного побережья США 90-х годов.', descUA: 'Легенда репу Східного узбережжя США 90-х років.' },
+      { nameRU: 'The Weeknd', nameUA: 'The Weeknd', wiki: 'The_Weeknd', emoji: '🌃', descRU: 'Канадский певец, возродивший эстетику ретро-вейва.', descUA: 'Канадський співак, який відродив естетику ретро-вейву.' },
+      { nameRU: 'Тина Кароль', nameUA: 'Тіна Кароль', wiki: 'Tina_Karol', emoji: '💃', descRU: 'Украинская певица, дива с чувственным голосом и красной помадой.', descUA: 'Українська співачка, діва з чуттєвим голосом та червоною помадою.' },
+      { nameRU: 'Тина Тёрнер', nameUA: 'Тіна Тернер', wiki: 'Tina_Turner', emoji: '⚡', descRU: 'Королева рок-н-ролла с мощным вокалом и невероятной энергетикой.', descUA: 'Королева рок-н-ролу з потужним вокалом та неймовірною енергетикою.' },
+      { nameRU: 'Тим Делонг', nameUA: 'Том Делонг', wiki: 'Tom_DeLonge', emoji: '🛸', descRU: 'Основатель рок-группы Blink-182 и исследователь НЛО.', descUA: 'Засновник рок-групи Blink-182 та дослідник НЛО.' },
+      { nameRU: 'Трэвис Скотт', nameUA: 'Тревіс Скотт', wiki: 'Travis_Scott', emoji: '🌵', descRU: 'Американский рэпер, устраивающий безумные шоу.', descUA: 'Американський репер, який влаштовує божевільні шоу.' },
+      { nameRU: 'Тупак Шакур', nameUA: 'Тупак Шакур', wiki: 'Tupac_Shakur', emoji: '🎤', descRU: 'Икона хип-хопа, борец за права чернокожих в США.', descUA: 'Ікона хіп-хопу, борець за права темношкірих у США.' },
+      { nameRU: 'Уитни Хьюстон', nameUA: 'Вітні Г\'юстон', wiki: 'Whitney_Houston', emoji: '🎤', descRU: 'Великая американская певица, исполнительница хита "I Will Always Love You".', descUA: 'Видатна американська співачка, виконавиця хіта "I Will Always Love You".' },
+      { nameRU: 'Фейс', nameUA: 'Фейс', wiki: 'Face_(rapper)', emoji: '⭐', descRU: 'Популярный российский рэпер, ставший голосом молодежи в 2017 году.', descUA: 'Популярний російський репер, який став голосом молоді у 2017 році.' },
+      { nameRU: 'Фредди Меркьюри', nameUA: 'Фредді Мерк\'юрі', wiki: 'Freddie_Mercury', emoji: '🎸', descRU: 'Легендарный вокалист рок-группы Queen с диапазоном в 4 октавы.', descUA: 'Легендарний вокаліст рок-гурту Queen з діапазоном у 4 октави.' },
+      { nameRU: 'Фрэнк Синатра', nameUA: 'Френк Сінатра', wiki: 'Frank_Sinatra', emoji: '🎩', descRU: 'Легендарный американский крунер, исполнитель My Way.', descUA: 'Легендарний американський крунер, виконавець My Way.' },
+      { nameRU: 'Charli XCX', nameUA: 'Charli XCX', wiki: 'Charli_XCX', emoji: '🟩', descRU: 'Британская поп-певица, королева гиперпопа и альбома Brat.', descUA: 'Британська поп-співачка, королева гіперпопу та альбому Brat.' },
+      { nameRU: 'Шакира', nameUA: 'Шакіра', wiki: 'Shakira', emoji: '💃', descRU: 'Колумбийская певица, знаменитая своими танцами живота.', descUA: 'Колумбійська співачка, відома своїми танцями живота.' },
+      { nameRU: 'Эд Ширан', nameUA: 'Ед Ширан', wiki: 'Ed_Sheeran', emoji: '🎸', descRU: 'Рыжеволосый британский певец с гитарой, бьющий рекорды.', descUA: 'Рудоволосий британський співак із гітарою, який б\'є рекорди.' },
+      { nameRU: 'Эдит Пиаф', nameUA: 'Едіт Піаф', wiki: 'Édith_Piaf', emoji: '🌹', descRU: 'Великая французская шансонье, голос Франции.', descUA: 'Видатна французька шансоньє, голос Франції.' },
+      { nameRU: 'Элвис Пресли', nameUA: 'Елвіс Преслі', wiki: 'Elvis_Presley', emoji: '🎸', descRU: 'Король рок-н-ролла со знаменитой укладкой.', descUA: 'Король рок-н-ролу зі знаменитою зачіскою.' },
+      { nameRU: 'Элтон Джон', nameUA: 'Елтон Джон', wiki: 'Elton_John', emoji: '👓', descRU: 'Легендарный британский певец и пианист в эксцентричных очках.', descUA: 'Легендарний британський співак та піаніст в ексцентричних окулярах.' },
+      { nameRU: 'Эминем', nameUA: 'Емінем', wiki: 'Eminem', emoji: '🎤', descRU: 'Легендарный белый рэпер, вошедший в историю хип-хопа.', descUA: 'Легендарний білий репер, який увійшов в історію хіп-хопу.' },
+      { nameRU: 'Энди Питерс', nameUA: 'Енді Пітерс', wiki: 'Andi_Peters', emoji: '📺', descRU: 'Британский телеведущий и музыкальный деятель.', descUA: 'Британський телеведучий та музичний діяч.' },
+      { nameRU: 'Wellboy', nameUA: 'Wellboy', wiki: 'Wellboy', emoji: '🍒', descRU: 'Украинский певец, прославившийся хитом "Гуси".', descUA: 'Український співак, який прославився хітом "Гуси".' },
+      { nameRU: 'Зейн Малик', nameUA: 'Зейн Малік', wiki: 'Zayn_Malik', emoji: '💫', descRU: 'Экс-солист бойз-бэнда One Direction, успешный сольный певец.', descUA: 'Екс-соліст бойз-бенду One Direction, успішний сольний співак.' }
+    ]
+  },
+  {
+    id: 'history', icon: '🏛️', nameRU: 'История', nameUA: 'Історія',
+    chars: [
+      { nameRU: 'Абрахам Линкольн', nameUA: 'Авраам Лінкольн', wiki: 'Abraham_Lincoln', emoji: '🎩', descRU: '16-й президент США, уничтоживший рабство в стране.', descUA: '16-й президент США, який знищив рабство в країні.' },
+      { nameRU: 'Александр Македонский', nameUA: 'Олександр Македонський', wiki: 'Alexander_the_Great', emoji: '🗡️', descRU: 'Великий полководец древности, создавший мировую империю.', descUA: 'Видатний полководець давнини, який створив світову імперію.' },
+      { nameRU: 'Александр Невский', nameUA: 'Олександр Невський', wiki: 'Alexander_Nevsky', emoji: '🛡️', descRU: 'Князь, прославившийся Ледовым побоищем.', descUA: 'Князь, який прославився Льодовим побоїщем.' },
+      { nameRU: 'Альберт Эйнштейн', nameUA: 'Альберт Айнштайн', wiki: 'Albert_Einstein', emoji: '💡', descRU: 'Гениальный физик, автор теории относительности.', descUA: 'Геніальний фізик, автор теорії відносності.' },
+      { nameRU: 'Альфред Нобель', nameUA: 'Альфред Нобель', wiki: 'Alfred_Nobel', emoji: '🧨', descRU: 'Изобретатель динамита и основатель Нобелевской премии.', descUA: 'Винахідник динаміту та засновник Нобелівської премії.' },
+      { nameRU: 'Ангела Меркель', nameUA: 'Ангела Меркель', wiki: 'Angela_Merkel', emoji: '🇩🇪', descRU: 'Многолетний канцлер Германии, влиятельный мировой лидер.', descUA: 'Багаторічний канцлер Німеччини, впливовий світовий лідер.' },
+      { nameRU: 'Антон Чехов', nameUA: 'Антон Чехов', wiki: 'Anton_Chekhov', emoji: '📖', descRU: 'Великий писатель, классик мировой литературы и драматург.', descUA: 'Видатний письменник, класик світової літератури та драматург.' },
+      { nameRU: 'Аристотель', nameUA: 'Арістотель', wiki: 'Aristotle', emoji: '📜', descRU: 'Великий древнегреческий философ, ученик Платона.', descUA: 'Видатний давньогрецький філософ, учень Платона.' },
+      { nameRU: 'Архимед', nameUA: 'Архімед', wiki: 'Archimedes', emoji: '📐', descRU: 'Математик и физик древности, кричавший "Эврика!".', descUA: 'Математик і фізик давнини, який кричав "Еврика!".' },
+      { nameRU: 'Барак Обама', nameUA: 'Барак Обама', wiki: 'Barack_Obama', emoji: '🇺🇸', descRU: '44-й президент США, лауреат Нобелевской премии мира.', descUA: '44-й президент США, лауреат Нобелівської премії миру.' },
+      { nameRU: 'Бенджамин Франклин', nameUA: 'Бенджамін Франклін', wiki: 'Benjamin_Franklin', emoji: '💵', descRU: 'Один из отцов-основателей США, изображенный на 100 долларах.', descUA: 'Один із батьків-засновників США, зображений на 100 доларах.' },
+      { nameRU: 'Билл Гейтс', nameUA: 'Білл Гейтс', wiki: 'Bill_Gates', emoji: '💻', descRU: 'Основатель корпорации Microsoft и один из величайших филантропов.', descUA: 'Засновник корпорації Microsoft та один із найвидатніших філантропів.' },
+      { nameRU: 'Богдан Хмельницький', nameUA: 'Богдан Хмельницький', wiki: 'Bohdan_Khmelnytsky', emoji: '⚔️', descRU: 'Гетман Запорожского войска, предводитель казацкого восстания.', descUA: 'Гетьман Запорозького війська, ватажок козацького повстання.' },
+      { nameRU: 'Борис Джонсон', nameUA: 'Борис Джонсон', wiki: 'Boris_Johnson', emoji: '🇬🇧', descRU: 'Эксцентричный премьер-министр Великобритании, поддержавший Украину.', descUA: 'Ексцентричний прем\'єр-міністр Великої Британії, який підтримав Україну.' },
+      { nameRU: 'Борис Ельцин', nameUA: 'Борис Єльцин', wiki: 'Boris_Yeltsin', emoji: '🇷🇺', descRU: 'Первый президент Российской Федерации после распада СССР.', descUA: 'Перший президент Російської Федерації після розпаду СРСР.' },
+      { nameRU: 'Валерій Залужний', nameUA: 'Валерій Залужний', wiki: 'Valeriy_Zaluzhnyi', emoji: '🪖', descRU: 'Генерал, бывший главнокомандующий Вооруженными силами Украины.', descUA: 'Генерал, колишній головнокомандувач Збройних сил України.' },
+      { nameRU: 'Віталій Кличко', nameUA: 'Віталій Кличко', wiki: 'Vitali_Klitschko', emoji: '🥊', descRU: 'Мэр Киева, легендарный чемпион мира по боксу.', descUA: 'Мер Києва, легендарний чемпіон світу з боксу.' },
+      { nameRU: 'Владимир Зеленский', nameUA: 'Володимир Зеленський', wiki: 'Volodymyr_Zelenskyy', emoji: '🇺🇦', descRU: '6-й президент Украины, возглавивший страну во время войны.', descUA: '6-й президент України, який очолив країну під час війни.' },
+      { nameRU: 'Владимир Ленин', nameUA: 'Володимир Ленін', wiki: 'Vladimir_Lenin', emoji: '☭', descRU: 'Вождь Октябрьской революции, основатель СССР.', descUA: 'Вождь Жовтневої революції, засновник СРСР.' },
+      { nameRU: 'Вольтер', nameUA: 'Вольтер', wiki: 'Voltaire', emoji: '✍️', descRU: 'Французский философ-просветитель и писатель.', descUA: 'Французький філософ-просвітитель та письменник.' },
+      { nameRU: 'Галилео Галилей', nameUA: 'Галілео Галілей', wiki: 'Galileo_Galilei', emoji: '🔭', descRU: 'Отец современной наблюдательной астрономии и физики.', descUA: 'Батько сучасної спостережної астрономії та фізики.' },
+      { nameRU: 'Ганнибал Барка', nameUA: 'Ганнібал Барка', wiki: 'Hannibal', emoji: '🐘', descRU: 'Карфагенский полководец, перешедший Альпы на слонах ради Рима.', descUA: 'Карфагенський полководець, який перейшов Альпи на слонах заради Риму.' },
+      { nameRU: 'Геродот', nameUA: 'Геродот', wiki: 'Herodotus', emoji: '📜', descRU: 'Древнегреческий историк, известный как "отец истории".', descUA: 'Давньогрецький історик, відомий як "батько історії".' },
+      { nameRU: 'Генри Форд', nameUA: 'Генрі Форд', wiki: 'Henry_Ford', emoji: '🚗', descRU: 'Промышленник, создатель первого конвейера по сборке автомобилей.', descUA: 'Промисловець, творець першого конвеєра з випуску автомобілів.' },
+      { nameRU: 'Георгий Жуков', nameUA: 'Георгій Жуков', wiki: 'Georgy_Zhukov', emoji: '🎖️', descRU: 'Маршал Советского Союза, выдающийся полководец Второй мировой.', descUA: 'Маршал Радянського Союзу, видатний полководець Другої світової.' },
+      { nameRU: 'Грета Тунберг', nameUA: 'Грета Тунберг', wiki: 'Greta_Thunberg', emoji: '🌱', descRU: 'Юная шведская экологическая активистка, борец с изменением климата.', descUA: 'Юна шведська екологічна активістка, борець із зміною клімату.' },
+      { nameRU: 'Далай-лама', nameUA: 'Далай-лама', wiki: '14th_Dalai_Lama', emoji: '☮️', descRU: 'Духовный лидер тибетского буддизма, лауреат Нобелевской премии мира.', descUA: 'Духовний лідер тибетського буддизму, лауреат Нобелівської премії миру.' },
+      { nameRU: 'Данило Галицький', nameUA: 'Данило Галицький', wiki: 'Daniel_of_Galicia', emoji: '👑', descRU: 'Князь галицко-волынский, ставший первым королем Руси.', descUA: 'Князь галицько-волинський, який став першим королем Русі.' },
+      { nameRU: 'Данте Алигьери', nameUA: 'Данте Аліг\'єрі', wiki: 'Dante_Alighieri', emoji: '📕', descRU: 'Великий поэт эпохи Возрождения, автор "Божественной комедии".', descUA: 'Видатний поет епохи Відродження, автор "Божественної комедії".' },
+      { nameRU: 'Джефф Безос', nameUA: 'Джефф Безос', wiki: 'Jeff_Bezos', emoji: '📦', descRU: 'Основатель интернет-гиганта Amazon и космической компании Blue Origin.', descUA: 'Засновник інтернет-гіганта Amazon та космічної компанії Blue Origin.' },
+      { nameRU: 'Джо Байден', nameUA: 'Джо Байден', wiki: 'Joe_Biden', emoji: '🇺🇸', descRU: '46-й действующий президент США.', descUA: '46-й чинний президент США.' },
+      { nameRU: 'Джон Кеннеди', nameUA: 'Джон Кеннеді', wiki: 'John_F._Kennedy', emoji: '🇺🇸', descRU: '35-й президент США, чье убийство в Далласе потрясло мир.', descUA: '35-й президент США, чиє вбивство в Далласі вразило світ.' },
+      { nameRU: 'Джон Рокфеллер', nameUA: 'Джон Рокфеллер', wiki: 'John_D._Rockefeller', emoji: '💵', descRU: 'Первый долларовый миллиардер в истории человечества.', descUA: 'Перший доларовий мільярдер в історії людства.' },
+      { nameRU: 'Джордж Вашингтон', nameUA: 'Джордж Вашингтон', wiki: 'George_Washington', emoji: '🏛️', descRU: 'Первый президент США, возглавивший войну за независимость.', descUA: 'Перший президент США, який очолив війну за незалежність.' },
+      { nameRU: 'Дональд Трамп', nameUA: 'Дональд Трамп', wiki: 'Donald_Trump', emoji: '🦅', descRU: '45-й президент США, миллиардер и строительный магнат.', descUA: '45-й президент США, мільярдер та будівельний магнат.' },
+      { nameRU: 'Екатерина II', nameUA: 'Катерина II', wiki: 'Catherine_the_Great', emoji: '👑', descRU: 'Императрица, правившая Российской империей в период ее расцвета.', descUA: 'Імператриця, яка правила Російською імперією в період її розквіту.' },
+      { nameRU: 'Жан-Жак Руссо', nameUA: 'Жан-Жак Руссо', wiki: 'Jean-Jacques_Rousseau', emoji: '📜', descRU: 'Французский мыслитель, теоретик общественного договора.', descUA: 'Французький мислитель, теоретик суспільного договору.' },
+      { nameRU: 'Жанна д\'Арк', nameUA: 'Жанна д\'Арк', wiki: 'Joan_of_Arc', emoji: '🛡️', descRU: 'Национальная героиня Франции, Орлеанская дева.', descUA: 'Національна героїня Франції, Орлеанська діва.' },
+      { nameRU: 'Зигмунд Фрейд', nameUA: 'Зігмунд Фрейд', wiki: 'Sigmund_Freud', emoji: '🧠', descRU: 'Австрийский психоаналитик, открывший тайны бессознательного.', descUA: 'Австрійський психоаналітик, який відкрив таємниці несвідомого.' },
+      { nameRU: 'Иван Грозный', nameUA: 'Іван Грозний', wiki: 'Ivan_the_Terrible', emoji: '👑', descRU: 'Первый царь всея Руси, расширивший ее границы.', descUA: 'Перший цар усієї Русі, який розширив її кордони.' },
+      { nameRU: 'Иван Франко', nameUA: 'Іван Франко', wiki: 'Ivan_Franko', emoji: '✒️', descRU: 'Украинский писатель, поэт, переводчик и общественный деятель.', descUA: 'Український письменник, поет, перекладач та громадський діяч.' },
+      { nameRU: 'Иммануил Кант', nameUA: 'Іммануїл Кант', wiki: 'Immanuel_Kant', emoji: '📖', descRU: 'Немецкий философ, основоположник классической философии.', descUA: 'Німецький філософ, родоначальник класичної філософії.' },
+      { nameRU: 'Индира Ганди', nameUA: 'Індіра Ганді', wiki: 'Indira_Gandhi', emoji: '🇮🇳', descRU: 'Первая женщина премьер-министр в истории Индии.', descUA: 'Перша жінка прем\'єр-міністр в історії Індії.' },
+      { nameRU: 'Иосиф Сталин', nameUA: 'Йосип Сталін', wiki: 'Joseph_Stalin', emoji: '☭', descRU: 'Многолетний руководитель СССР во время Второй мировой войны.', descUA: 'Багаторічний керівник СРСР під час Другої світової війни.' },
+      { nameRU: 'Исаак Ньютон', nameUA: 'Ісаак Ньютон', wiki: 'Isaac_Newton', emoji: '🍎', descRU: 'Гениальный физик, сформулировавший закон гравитации.', descUA: 'Геніальний фізик, який сформулював закон гравітації.' },
+      { nameRU: 'Іван Мазепа', nameUA: 'Іван Мазепа', wiki: 'Ivan_Mazepa', emoji: '🛡️', descRU: 'Гетман Войска Запорожского, объединитель украинских земель.', descUA: 'Гетьман Війська Запорозького, об\'єднувач українських земель.' },
+      { nameRU: 'Иоганн Гёте', nameUA: 'Йоганн Гете', wiki: 'Johann_Wolfgang_von_Goethe', emoji: '📜', descRU: 'Великий немецкий поэт, мыслитель, автор драмы "Фауст".', descUA: 'Видатний німецький поет, мислитель, автор драми "Фауст".' },
+      { nameRU: 'Карл Маркс', nameUA: 'Карл Маркс', wiki: 'Karl_Marx', emoji: '📕', descRU: 'Философ и экономист, автор "Капитала" и теории марксизма.', descUA: 'Філософ та економіст, автор "Капіталу" та теорії марксизму.' },
+      { nameRU: 'Карл Юнг', nameUA: 'Карл Юнг', wiki: 'Carl_Jung', emoji: '🧠', descRU: 'Основатель аналитической психологии, создатель теории архетипов.', descUA: 'Засновник аналітичної психології, творець теорії архетипів.' },
+      { nameRU: 'Клеопатра', nameUA: 'Клеопатра', wiki: 'Cleopatra', emoji: '🐍', descRU: 'Последняя царица эллинистического Египта из династии Лагидов.', descUA: 'Остання цариця елліністичного Єгипту з династії Лагідів.' },
+      { nameRU: 'Коперник', nameUA: 'Коперник', wiki: 'Nicolaus_Copernicus', emoji: '☀️', descRU: 'Астроном, создавший гелиоцентрическую систему мира.', descUA: 'Астроном, який створив геліоцентричку систему світу.' },
+      { nameRU: 'Конфуций', nameUA: 'Конфуцій', wiki: 'Confucius', emoji: '⛩️', descRU: 'Древнекитайский философ, основатель конфуцианства.', descUA: 'Давньокитайський філософ, засновник конфуціанства.' },
+      { nameRU: 'Ларри Пейдж', nameUA: 'Ларрі Пейдж', wiki: 'Larry_Page', emoji: '💻', descRU: 'Сооснователь поисковой системы и корпорации Google.', descUA: 'Співзасновник пошукової системи та корпорації Google.' },
+      { nameRU: 'Леонардо да Винчи', nameUA: 'Леонардо да Вінчі', wiki: 'Leonardo_da_Vinci', emoji: '🎨', descRU: 'Великий художник, ученый и изобретатель эпохи Возрождения.', descUA: 'Видатний художник, вчений та винахідник еохи Відродження.' },
+      { nameRU: 'Леся Українка', nameUA: 'Леся Українка', wiki: 'Lesya_Ukrainka', emoji: '✍️', descRU: 'Выдающаяся украинская поэтесса, писательница и фольклористка.', descUA: 'Видатна українська поетка, письменниця та фольклористка.' },
+      { nameRU: 'Лев Толстой', nameUA: 'Лев Толстой', wiki: 'Leo_Tolstoy', emoji: '📖', descRU: 'Один из величайших писателей мира, автор романа Война и мир.', descUA: 'Один із найвидатніших письменників світу, автор роману Війна і мир.' },
+      { nameRU: 'Маргарет Тэтчер', nameUA: 'Маргарет Тетчер', wiki: 'Margaret_Thatcher', emoji: '🇬🇧', descRU: 'Железная леди, первая женщина премьер-министр Великобритании.', descUA: 'Залізна леді, перша жінка прем\'єр-міністр Великої Британії.' },
+      { nameRU: 'Мари Кюри', nameUA: 'Марія Кюрі', wiki: 'Marie_Curie', emoji: '🧪', descRU: 'Первая женщина лауреат Нобелевской премии по физике и химии.', descUA: 'Перша жінка лауреат Нобелівської премії з фізики та хімії.' },
+      { nameRU: 'Марк Цукерберг', nameUA: 'Марк Цукерберг', wiki: 'Mark_Zuckerberg', emoji: '📱', descRU: 'Американский программист, сооснователь социальной сети Facebook.', descUA: 'Американський програміст, співзасновник соціальної мережі Facebook.' },
+      { nameRU: 'Мартин Лютер Кинг', nameUA: 'Мартін Лютер Кінг', wiki: 'Martin_Luther_King_Jr.', emoji: '✊', descRU: 'Лидер движения за гражданские права чернокожих в США.', descUA: 'Лідер руху за громадянські права темношкірих у США.' },
+      { nameRU: 'Мать Тереза', nameUA: 'Мати Тереза', wiki: 'Mother_Teresa', emoji: '🕊️', descRU: 'Католическая монахиня, помогавшая бедным и больным по всему миру.', descUA: 'Католицька черниця, яка допомагала бідним та хворим по всьому світу.' },
+      { nameRU: 'Мао Цзэдун', nameUA: 'Мао Цзедун', wiki: 'Mao_Zedong', emoji: '🇨🇳', descRU: 'Основатель и первый председатель КНР, теоретик маоизма.', descUA: 'Засновник і перший голова КНР, теоретик маоїзму.' },
+      { nameRU: 'Махатма Ганди', nameUA: 'Махатма Ганді', wiki: 'Mahatma_Gandhi', emoji: '🕉️', descRU: 'Идеолог ненасильственного сопротивления колониализму в Индии.', descUA: 'Ідеолог ненасильницького опору колоніалізму в Індії.' },
+      { nameRU: 'Михаил Горбачев', nameUA: 'Михайло Горбачов', wiki: 'Mikhail_Gorbachev', emoji: '🇷🇺', descRU: 'Последний генеральный секретарь ЦК КПСС и единственный президент СССР.', descUA: 'Останній генеральний секретар ЦК КПРС і єдиний президент СРСР.' },
+      { nameRU: 'Михайло Грушевський', nameUA: 'Михайло Грушевський', wiki: 'Mykhailo_Hrushevsky', emoji: '📜', descRU: 'Украинский историк, первый председатель Центральной Рады УНР.', descUA: 'Український історик, перший голова Центральної Ради УНР.' },
+      { nameRU: 'Микеланджело', nameUA: 'Мікеланджело', wiki: 'Michelangelo', emoji: '🎨', descRU: 'Один из величайших скульпторов и художников Возрождения.', descUA: 'Один із найвидатніших скульпторів та художників Відродження.' },
+      { nameRU: 'Наполеон', nameUA: 'Наполеон', wiki: 'Napoleon', emoji: '👑', descRU: 'Французский император, великий реформатор и завоеватель Европы.', descUA: 'Французький імператор, видатний реформатор та завойовник Європи.' },
+      { nameRU: 'Нельсон Мандела', nameUA: 'Нельсон Мандела', wiki: 'Nelson_Mandela', emoji: '🇿🇦', descRU: 'Первый чернокожий президент ЮАР, борец с апартеидом.', descUA: 'Перший чорношкірий президент ПАР, борець з апартеїдом.' },
+      { nameRU: 'Никита Хрущев', nameUA: 'Микита Хрущов', wiki: 'Nikita_Khrushchev', emoji: '🌽', descRU: 'Руководитель СССР в период "оттепели", развенчавший культ личности.', descUA: 'Керівник СРСР у період "відлиги", який розвінчав культ особи.' },
+      { nameRU: 'Никола Тесла', nameUA: 'Нікола Тесла', wiki: 'Nikola_Tesla', emoji: '⚡', descRU: 'Изобретатель в области электротехники, обуздавший переменный ток.', descUA: 'Винахідник в галузі електротехніки, який приборкав змінний струм.' },
+      { nameRU: 'Нил Armстронг', nameUA: 'Ніл Армстронг', wiki: 'Neil_Armstrong', emoji: '🌕', descRU: 'Американский астронавт, первый человек на Луне.', descUA: 'Американський астронавт, перша людина на Місяці.' },
+      { nameRU: 'Отто фон Бисмарк', nameUA: 'Отто фон Бісмарк', wiki: 'Otto_von_Bismarck', emoji: '🇩🇪', descRU: 'Железный канцлер, объединивший Германию в империю.', descUA: 'Залізний канцлер, який об\'єднав Німеччину в імперію.' },
+      { nameRU: 'Папа Римский', nameUA: 'Папа Римський', wiki: 'Pope', emoji: '🇻🇦', descRU: 'Глава католической церкви и суверен государства Ватикан.', descUA: 'Глава католицької церкви та суверен держави Ватикан.' },
+      { nameRU: 'Петр I', nameUA: 'Петро I', wiki: 'Peter_the_Great', emoji: '⚔️', descRU: 'Первый император Всероссийский, "прорубивший окно в Европу".', descUA: 'Перший імператор Всеросійський, який "прорубав вікно в Європу".' },
+      { nameRU: 'Платон', nameUA: 'Платон', wiki: 'Plato', emoji: '📜', descRU: 'Древнегреческий философ, ученик Сократа, автор "Государства".', descUA: 'Давньогрецький філософ, учень Сократа, автор "Держави".' },
+      { nameRU: 'Роксолана', nameUA: 'Роксолана', wiki: 'Hurrem_Sultan', emoji: '👑', descRU: 'Хасеки Хюррем Султан, влиятельная жена Сулеймана Великолепного.', descUA: 'Хасекі Хюррем Султан, впливова дружина Сулеймана Пишного.' },
+      { nameRU: 'Сатоши Накамото', nameUA: 'Сатоші Накамото', wiki: 'Satoshi_Nakamoto', emoji: '🪙', descRU: 'Таинственный создатель первой в мире криптовалюты Биткоин.', descUA: 'Таємничий творець першої у світі криптовалюти Біткоін.' },
+      { nameRU: 'Сергей Брин', nameUA: 'Сергій Брін', wiki: 'Sergey_Brin', emoji: '💻', descRU: 'Американский интернет-предприниматель, сооснователь Google.', descUA: 'Американський інтернет-підприємець, співзасновник Google.' },
+      { nameRU: 'Сергей Королев', nameUA: 'Сергій Корольов', wiki: 'Sergei_Korolev', emoji: '🚀', descRU: 'Великий конструктор космических ракет, запустивший Гагарина.', descUA: 'Видатний конструктор космічних ракет, який запустив Гагаріна.' },
+      { nameRU: 'Сократ', nameUA: 'Сократ', wiki: 'Socrates', emoji: '📜', descRU: 'Древнегреческий философ, не оставивший письменных трудов.', descUA: 'Давньогрецький філософ, який не залишив письмових праць.' },
+      { nameRU: 'Спартак', nameUA: 'Спартак', wiki: 'Spartacus', emoji: '🗡️', descRU: 'Предводитель величайшего восстания рабов в Римской республике.', descUA: 'Ватажок найвеличнішого повстання рабів у Римській республіці.' },
+      { nameRU: 'Степан Бандера', nameUA: 'Степан Бандера', wiki: 'Stepan_Bandera', emoji: '🇺🇦', descRU: 'Один из лидеров украинского националистического движения XX века.', descUA: 'Один із лідерів українського націоналістичного руху XX століття.' },
+      { nameRU: 'Стив Джобс', nameUA: 'Стів Джобс', wiki: 'Steve_Jobs', emoji: '🍎', descRU: 'Основатель Apple, визионер и создатель первого iPhone.', descUA: 'Засновник Apple, візіонер та творець першого iPhone.' },
+      { nameRU: 'Стивен Хокинг', nameUA: 'Стівен Гокінг', wiki: 'Stephen_Hawking', emoji: '🌌', descRU: 'Великий физик-теоретик, популяризатор науки и исследователь черных дыр.', descUA: 'Видатний фізик-теоретик, популяризатор науки та дослідник чорних дір.' },
+      { nameRU: 'Сунь-цзы', nameUA: 'Сунь-цзи', wiki: 'Sun_Tzu', emoji: '⚔️', descRU: 'Китайский стратег древности, автор трактата "Искусство войны".', descUA: 'Китайський стратег давнини, автор трактату "Мистецтво війни".' },
+      { nameRU: 'Тарас Шевченко', nameUA: 'Тарас Шевченко', wiki: 'Taras_Shevchenko', emoji: '📜', descRU: 'Великий Кобзарь, поэт, писатель и символ независимости Украины.', descUA: 'Великий Кобзар, поет, письменник та символ незалежності України.' },
+      { nameRU: 'Тимоти Лири', nameUA: 'Тімоті Лірі', wiki: 'Timothy_Leary', emoji: '🧠', descRU: 'Американский психолог и писатель, исследователь психоделиков.', descUA: 'Американський психолог та письменник, дослідник психоделіків.' },
+      { nameRU: 'Томас Джефферсон', nameUA: 'Томас Джефферсон', wiki: 'Thomas_Jefferson', emoji: '📜', descRU: 'Один из авторов Декларации независимости и 3-й президент США.', descUA: 'Один із авторів Декларації незалежності та 3-й президент США.' },
+      { nameRU: 'Томас Эдисон', nameUA: 'Томас Едісон', wiki: 'Thomas_Edison', emoji: '💡', descRU: 'Изобретатель, усовершенствовавший лампу накаливания и фонограф.', descUA: 'Винахідник, який удосконалив лампу розжарювання та фонограф.' },
+      { nameRU: 'Уильям Шекспир', nameUA: 'Вільям Шекспір', wiki: 'William_Shakespeare', emoji: '✍️', descRU: 'Величайший драматург мира, автор трагедии "Ромео и Джульетта".', descUA: 'Найвидатніший драматург світу, автор трагедії "Ромео і Джульєтта".' },
+      { nameRU: 'Уинстон Черчилль', nameUA: 'Вінстон Черчилль', wiki: 'Winston_Churchill', emoji: '🚬', descRU: 'Харизматичный премьер-министр Великобритании периода ВМВ.', descUA: 'Харизматичний прем\'єр-міністр Великої Британії періоду Другої світової війни.' },
+      { nameRU: 'Уоррен Баффетт', nameUA: 'Воррен Баффетт', wiki: 'Warren_Buffett', emoji: '📈', descRU: 'Оракул из Омахи, один из величайших инвесторов мира.', descUA: 'Оракул з Омахи, один із найвидатніших інвесторів світу.' },
+      { nameRU: 'Фёдор Достоевский', nameUA: 'Федір Достоєвський', wiki: 'Fyodor_Dostoevsky', emoji: '📖', descRU: 'Русский писатель-философ, автор романа "Преступление и наказание".', descUA: 'Російський письменник-філософ, автор роману "Злочин і кара".' },
+      { nameRU: 'Франклин Рузвельт', nameUA: 'Франклін Рузвельт', wiki: 'Franklin_D._Roosevelt', emoji: '♿', descRU: 'Президент США, возглавлявший страну во время Великой депрессии и ВМВ.', descUA: 'Президент США, який очолював країну під час Великої депресії та Другої світової.' },
+      { nameRU: 'Фридрих Ницше', nameUA: 'Фрідріх Ніцше', wiki: 'Friedrich_Nietzsche', emoji: '🏛️', descRU: 'Немецкий философ, автор концепции сверхчеловека.', descUA: 'Німецький філософ, автор концепції надлюдини.' },
+      { nameRU: 'Фидель Кастро', nameUA: 'Фідель Кастро', wiki: 'Fidel_Castro', emoji: '🇨🇺', descRU: 'Кубинский революционер, бессменный лидер Острова Свободы.', descUA: 'Кубинський революціонер, беззмінний лідер Острова Свободи.' },
+      { nameRU: 'Чарльз Дарвин', nameUA: 'Чарльз Дарвін', wiki: 'Charles_Darwin', emoji: '🐵', descRU: 'Естествоиспытатель, создатель эволюционной теории происхождения видов.', descUA: 'Природодослідник, творець еволюційної теорії походження видів.' },
+      { nameRU: 'Che Guevara', nameUA: 'Че Гевара', wiki: 'Che_Guevara', emoji: '⭐️', descRU: 'Латиноамериканский революционер, символ кубинской революции.', descUA: 'Латиноамериканський революціонер, символ кубинської революції.' },
+      { nameRU: 'Чингисхан', nameUA: 'Чингісхан', wiki: 'Genghis_Khan', emoji: '🏹', descRU: 'Основатель и первый великий хан крупнейшей Монгольской империи.', descUA: 'Засновник і перший великий хан найбільшої Монгольської імперії.' },
+      { nameRU: 'Шарль де Голль', nameUA: 'Шарль де Голль', wiki: 'Charles_de_Gaulle', emoji: '🇫🇷', descRU: 'Генерал, лидер Свободной Франции и первый президент Пятой республики.', descUA: 'Генерал, лідер Вільної Франції та перший президент П\'ятої республіки.' },
+      { nameRU: 'Эдвард Сноуден', nameUA: 'Едвард Сноуден', wiki: 'Edward_Snowden', emoji: '💻', descRU: 'Аналитик, раскрывший информацию о слежке спецслужб США за гражданами.', descUA: 'Аналітик, який розкрив інформацію про стеження спецслужб США за громадянами.' },
+      { nameRU: 'Эммануэль Макрон', nameUA: 'Еммануель Макрон', wiki: 'Emmanuel_Macron', emoji: '🇫🇷', descRU: 'Действующий президент Франции, самый молодой лидер в ее истории.', descUA: 'Чинний президент Франції, наймолодший лідер у її історії.' },
+      { nameRU: 'Юлий Цезарь', nameUA: 'Юлій Цезар', wiki: 'Julius_Caesar', emoji: '⚔️', descRU: 'Древнеримский государственный деятель, диктатор.', descUA: 'Давньоримський державний діяч, диктатор.' },
+      { nameRU: 'Юрий Гагарин', nameUA: 'Юрій Гагарін', wiki: 'Yuri_Gagarin', emoji: '🚀', descRU: 'Советский космонавт, ставший первым человеком в космосе.', descUA: 'Радянський космонавт, який став першою людиною в космосі.' }
+    ]
+  },
+  {
+    id: 'sport', icon: '⚽', nameRU: 'Спорт', nameUA: 'Спорт',
+    chars: [
+      { nameRU: 'Андрей Шевченко', nameUA: 'Андрій Шевченко', wiki: 'Andriy_Shevchenko', emoji: '⚽', descRU: 'Легенда украинского футбола, обладатель "Золотого мяча".', descUA: 'Легенда українського футболу, володар "Золотого м\'яча".' },
+      { nameRU: 'Андреа Пирло', nameUA: 'Андреа Пірло', wiki: 'Andrea_Pirlo', emoji: '🇮🇹', descRU: 'Итальянский маэстро полузащиты, чемпион мира.', descUA: 'Італійський маестро півзахисту, чемпіон світу.' },
+      { nameRU: 'Антуан Гризманн', nameUA: 'Антуан Грізманн', wiki: 'Antoine_Griezmann', emoji: '🇫🇷', descRU: 'Французский форвард, чемпион мира 2018 года.', descUA: 'Французький форвард, чемпіон світу 2018 року.' },
+      { nameRU: 'Букайо Сака', nameUA: 'Букайо Сака', wiki: 'Bukayo_Saka', emoji: '🌶️', descRU: 'Звезда Арсенала и сборной Англии, талантливый вингер.', descUA: 'Зірка Арсеналу та збірної Англії, талановитий вінгер.' },
+      { nameRU: 'Вірджил ван Дейк', nameUA: 'Вірджил ван Дейк', wiki: 'Virgil_van_Dijk', emoji: '🇳🇱', descRU: 'Один из лучших центральных защитников мира, капитан Ливерпуля.', descUA: 'Один із найкращих центральних захисників світу, капітан Ліверпуля.' },
+      { nameRU: 'Вінісіус Жуніор', nameUA: 'Вінісіус Жуніор', wiki: 'Vin%C3%ADcius_J%C3%BAnior', emoji: '⚡', descRU: 'Бразильский вингер, лидер атак мадридского Реала.', descUA: 'Бразильський вінгер, лідер атак мадридського Реала.' },
+      { nameRU: 'Гави', nameUA: 'Гаві', wiki: 'Gavi_(footballer)', emoji: '🇪🇸', descRU: 'Молодой и агрессивный полузащитник Барселоны и сборной Испании.', descUA: 'Молодий та агресивний півзахисник Барселони та збірної Іспанії.' },
+      { nameRU: 'Давид Вилья', nameUA: 'Давид Вілья', wiki: 'David_Villa', emoji: '🇪🇸', descRU: 'Легендарный испанский форвард, чемпион мира и Европы.', descUA: 'Легендарний іспанський форвард, чемпіон світу та Європи.' },
+      { nameRU: 'Дэвид Бекхэм', nameUA: 'Девід Бекхем', wiki: 'David_Beckham', emoji: '⚽', descRU: 'Английский полузащитник, мастер штрафных ударов.', descUA: 'Англійський півзахисник, майстер штрафних ударів.' },
+      { nameRU: 'Джамал Мусиала', nameUA: 'Джамал Мусіала', wiki: 'Jamal_Musiala', emoji: '🇩🇪', descRU: 'Молодая звезда Баварии и сборной Германии, дриблер.', descUA: 'Молода зірка Баварії та збірної Німеччини, дриблер.' },
+      { nameRU: 'Джанлуиджи Буффон', nameUA: 'Джанлуїджі Буффон', wiki: 'Gianluigi_Buffon', emoji: '🧤', descRU: 'Один из величайших вратарей в истории футбола.', descUA: 'Один із найвидатніших воротарів в історії футболу.' },
+      { nameRU: 'Джуд Беллингем', nameUA: 'Джуд Беллінгем', wiki: 'Jude_Bellingham', emoji: '🏴', descRU: 'Универсальный полузащитник Реала и Англии, звезда поколения.', descUA: 'Універсальний півзахисник Реала та Англії, зірка покоління.' },
+      { nameRU: 'Диего Марадона', nameUA: 'Дієго Марадона', wiki: 'Diego_Maradona', emoji: '🇦🇷', descRU: 'Автор гола "Рука Бога", величайший аргентинский футболист.', descUA: 'Автор голу "Рука Бога", видатний аргентинський футболіст.' },
+      { nameRU: 'Зинедин Зидан', nameUA: 'Зінедін Зідан', wiki: 'Zinedine_Zidane', emoji: '🇫🇷', descRU: 'Мастер изящной игры, легенда Франции и бывший тренер Реала.', descUA: 'Майстер витонченої гри, легенда Франції та колишній тренер Реала.' },
+      { nameRU: 'Златан Ибрагимович', nameUA: 'Златан Ібрагімович', wiki: 'Zlatan_Ibrahimovi%C4%87', emoji: '🦁', descRU: 'Шведский суперфорвард с боевым характером и огромным эго.', descUA: 'Шведський суперфорвард із бойовим характером та величезним его.' },
+      { nameRU: 'Икер Касильяс', nameUA: 'Ікер Касільяс', wiki: 'Iker_Casillas', emoji: '🧤', descRU: 'Многолетний капитан Реала и Испании, выигравший все титулы.', descUA: 'Багаторічний капітан Реала та Іспанії, який виграв усі титули.' },
+      { nameRU: 'Кайлиан Мбаппе', nameUA: 'Кіліан Мбаппе', wiki: 'Kylian_Mbapp%C3%A9', emoji: '⚡', descRU: 'Невероятно быстрый французский форвард, чемпион мира 2018.', descUA: 'Неймовірно швидкий французький форвард, чемпіон світу 2018.' },
+      { nameRU: 'Карим Benzема', nameUA: 'Карім Бензема', wiki: 'Karim_Benzema', emoji: '🇫🇷', descRU: 'Форвард Реала, обладатель Золотого мяча 2022 года.', descUA: 'Форвард Реала, володар Золотого м\'яча 2022 року.' },
+      { nameRU: 'Кевин Де Брюйне', nameUA: 'Кевін Де Брюйне', wiki: 'Kevin_De_Bruyne', emoji: '👑', descRU: 'Бельгийский плеймейкер Манчестер Сити, гений паса.', descUA: 'Бельгійський плеймейкер Манчестер Сіті, геній пасу.' },
+      { nameRU: 'Криштиану Роналду', nameUA: 'Кріштіану Роналду', wiki: 'Cristiano_Ronaldo', emoji: '🇵🇹', descRU: 'Один из величайших бомбардиров в истории под номером 7.', descUA: 'Один із найвидатніших бомбардирів в історії під номером 7.' },
+      { nameRU: 'Ламин Ямаль', nameUA: 'Ламін Ямаль', wiki: 'Lamine_Yamal', emoji: '🇪🇸', descRU: 'Юный вундеркинд Барселоны, покоривший Евро в 16 лет.', descUA: 'Юний вундеркінд Барселони, який підкорив Євро в 16 років.' },
+      { nameRU: 'Лионель Месси', nameUA: 'Ліонель Мессі', wiki: 'Lionel_Messi', emoji: '🐐', descRU: 'Многократный обладатель "Золотого мяча", чемпион мира.', descUA: 'Багаторазовий володар "Золотого м\'яча", чемпіон світу.' },
+      { nameRU: 'Луис Суарес', nameUA: 'Луїс Суарес', wiki: 'Luis_Su%C3%A1rez', emoji: '🇺🇾', descRU: 'Эль Пистолеро, грозный уругвайский нападающий.', descUA: 'Ель Пістолеро, грізний уругвайський нападник.' },
+      { nameRU: 'Лука Модрич', nameUA: 'Лука Модрич', wiki: 'Luka_Modri%C3%A7', emoji: '🇭🇷', descRU: 'Хорватский ветеран центра поля Реала, обладатель Золотого мяча.', descUA: 'Хорватський ветеран центру поля Реала, володар Золотого м\'яча.' },
+      { nameRU: 'Мейсон Маунт', nameUA: 'Мейсон Маунт', wiki: 'Mason_Mount', emoji: '🏴', descRU: 'Английский полузащитник, победитель Лиги Чемпионов.', descUA: 'Англійський півзахисник, переможець Ліги Чемпіонів.' },
+      { nameRU: 'Мохаммед Салах', nameUA: 'Мохамед Салах', wiki: 'Mohamed_Salah', emoji: '🇪🇬', descRU: 'Египетский король Ливерпуля, один из лучших форвардов.', descUA: 'Єгипетський король Ліверпуля, один із найкращих форвардів.' },
+      { nameRU: 'Неймар', nameUA: 'Неймар', wiki: 'Neymar', emoji: '🇧🇷', descRU: 'Бразильский кудесник мяча, мастер дриблинга и финтов.', descUA: 'Бразильський чарівник м\'яча, майстер дриблінгу та фінтів.' },
+      { nameRU: 'Педри', nameUA: 'Педрі', wiki: 'Pedri', emoji: '🇪🇸', descRU: 'Креативный полузащитник Барселоны, наследник Иньесты.', descUA: 'Креативний півзахисник Барселони, спадкоємець Іньєсти.' },
+      { nameRU: 'Пеле', nameUA: 'Пеле', wiki: 'Pel%C3%A9', emoji: '👑', descRU: 'Король футбола, единственный трехкратный чемпион мира.', descUA: 'Король футболу, єдиний триразовий чемпіон світу.' },
+      { nameRU: 'Пол Погба', nameUA: 'Пол Погба', wiki: 'Paul_Pogba', emoji: '🇫🇷', descRU: 'Экстравагантный французский полузащитник, чемпион мира.', descUA: 'Екстравагантний французький півзахисник, чемпіон світу.' },
+      { nameRU: 'Роберт Левандовски', nameUA: 'Роберт Левандовскі', wiki: 'Robert_Lewandowski', emoji: '🇵🇱', descRU: 'Польский голеадор, гроза штрафной соперника.', descUA: 'Польський голеадор, гроза штрафного супротивника.' },
+      { nameRU: 'Роберто Карлос', nameUA: 'Роберто Карлос', wiki: 'Roberto_Carlos_(footballer)', emoji: '⚡', descRU: 'Легендарный левый защитник с мощнейшим ударом.', descUA: 'Легендарний лівий захисник із найпотужнішим ударом.' },
+      { nameRU: 'Роналдиньо', nameUA: 'Роналдінью', wiki: 'Ronaldinho', emoji: '🤙', descRU: 'Бразильский кудесник с вечной улыбкой, обладатель Золотого мяча.', descUA: 'Бразильський чарівник із вічною посмішкою, володар Золотого м\'яча.' },
+      { nameRU: 'Роналдо (Феномен)', nameUA: 'Роналдо (Феномен)', wiki: 'Ronaldo_(Brazilian_footballer)', emoji: '⚽', descRU: 'Один из самых совершенных центрфорвардов в истории.', descUA: 'Один із найдосконаліших центрфорвардів в історії.' },
+      { nameRU: 'Серхио Рамос', nameUA: 'Серхіо Рамос', wiki: 'Sergio_Ramos', emoji: '🇪🇸', descRU: 'Легендарный испанский защитник, забивавший важнейшие голы.', descUA: 'Легендарний іспанський захисник, який забивав найважливіші голи.' },
+      { nameRU: 'Стивен Джеррард', nameUA: 'Стівен Джеррард', wiki: 'Steven_Gerrard', emoji: '🏴', descRU: 'Многолетний капитан Ливерпуля, лидер центра поля.', descUA: 'Багаторічний капітан Ліверпуля, лідер центру поля.' },
+      { nameRU: 'Тьерри Анри', nameUA: 'Тьєррі Анрі', wiki: 'Thierry_Henry', emoji: '👑', descRU: 'Легенда Арсенала, лучший форвард АПЛ начала 2000-х.', descUA: 'Легенда Арсеналу, найкращий форвард АПЛ початку 2000-х.' },
+      { nameRU: 'Трент Александр-Арнольд', nameUA: 'Трент Александр-Арнольд', wiki: 'Trent_Alexander-Arnold', emoji: '🏴', descRU: 'Правый защитник Ливерпуля с функциями плеймейкера.', descUA: 'Правий захисник Ливерпуля з функціями плеймейкера.' },
+      { nameRU: 'Уэйн Руни', nameUA: 'Вейн Руні', wiki: 'Wayne_Rooney', emoji: '🦁', descRU: 'Шрек, легендарный нападающий Манчестер Юнайтед и Англии.', descUA: 'Шрек, легендарний нападник Манчестер Юнайтед та Англії.' },
+      { nameRU: 'Фил Фоден', nameUA: 'Філ Фоден', wiki: 'Phil_Foden', emoji: '💎', descRU: 'Воспитанник Пепа Гвардиолы, лидер атак Манчестер Сити.', descUA: 'Вихованець Пепа Гвардіоли, лідер атак Манчестер Сіті.' },
+      { nameRU: 'Франческо Тотти', nameUA: 'Франческо Тотті', wiki: 'Francesco_Totti', emoji: '🐺', descRU: 'Император Рима, верный одной Роме за всю карьеру.', descUA: 'Імператор Риму, вірний одній Ромі за всю кар\'єру.' },
+      { nameRU: 'Хаби Алонсо', nameUA: 'Хабі Алонсо', wiki: 'Xabi_Alonso', emoji: '🇪🇸', descRU: 'Элегантный испанский полузащитник, ныне успешный тренер.', descUA: 'Елегантний іспанський півзахисник, нині успішний тренер.' },
+      { nameRU: 'Жерар Пике', nameUA: 'Жерар Піке', wiki: 'Gerard_Piqu%C3%A9', emoji: '🇪🇸', descRU: 'Защитник Барселоны, создатель Кингс Лиги.', descUA: 'Захисник Барселони, творець Кінгс Ліги.' },
+      { nameRU: 'Эрлинг Холанд', nameUA: 'Ерлінг Голанд', wiki: 'Erling_Haaland', emoji: '🤖', descRU: 'Норвежский робот-бомбардир Манчестер Сити.', descUA: 'Норвезький робот-бомбардир Манчестер Сіті.' },
+      { nameRU: 'Деннис Родман', nameUA: 'Денніс Родман', wiki: 'Dennis_Rodman', emoji: '🏀', descRU: 'Червяк, эпатажный король подборов из Чикаго Буллз.', descUA: 'Черв\'як, епатажний король підборів із Чикаго Буллз.' },
+      { nameRU: 'Кевин Дюрант', nameUA: 'Кевін Дюрант', wiki: 'Kevin_Durant', emoji: '🏀', descRU: 'Кей-Ди, один из лучших скореров в истории баскетбола.', descUA: 'Кей-Ді, один із найкращих скорерів в історії баскетболу.' },
+      { nameRU: 'Коби Брайант', nameUA: 'Кобі Браянт', wiki: 'Kobe_Bryant', emoji: '🐍', descRU: 'Черная Мамба, легенда Лос-Анджелес Лейкерс.', descUA: 'Чорна Мамба, легенда Лос-Анджелес Лейкерс.' },
+      { nameRU: 'Ларри Бёрд', nameUA: 'Ларрі Берд', wiki: 'Larry_Bird', emoji: '🏀', descRU: 'Легенда Бостона 80-х, мастер трехочковых и трэштока.', descUA: 'Легенда Бостона 80-х, майстер триочкових та трештоку.' },
+      { nameRU: 'LeBron James', nameUA: 'Леброн Джеймс', wiki: 'LeBron_James', emoji: '👑', descRU: 'Король Джеймс, лучший бомбардир в истории НБА.', descUA: 'Король Джеймс, найкращий бомбардир в історії НБА.' },
+      { nameRU: 'Майкл Джордан', nameUA: 'Майкл Джордан', wiki: 'Michael_Jordan', emoji: '🏀', descRU: 'Его Воздушество, икона Чикаго Буллз, бренд Jordan.', descUA: 'Його Повітряність, ікона Чикаго Буллз, бренд Jordan.' },
+      { nameRU: 'Мэджик Джонсон', nameUA: 'Меджик Джонсон', wiki: 'Magic_Johnson', emoji: '🪄', descRU: 'Шоутайм, величайший разыгрывающий в истории баскетбола.', descUA: 'Шоутайм, найвидатніший розігруючий в історії баскетболу.' },
+      { nameRU: 'Стефен Карри', nameUA: 'Стівен Каррі', wiki: 'Stephen_Curry', emoji: '🎯', descRU: 'Шеф Карри, изменивший баскетбол своими трехочковыми бросками.', descUA: 'Шеф Каррі, який змінив баскетбол своїми триочковими кидками.' },
+      { nameRU: 'Шакил О\'Нил', nameUA: 'Шакіл О\'Ніл', wiki: 'Shaquille_O\'Neal', emoji: '🧱', descRU: 'Шак, доминирующий центровой, ломавший баскетбольные щиты.', descUA: 'Шак, домінуючий центровий, який ламав баскетбольні щити.' },
+      { nameRU: 'Яннис Адетокунбо', nameUA: 'Янніс Адетокумбо', wiki: 'Giannis_Antetokounmpo', emoji: '🦌', descRU: 'Греческий фрик, мощный форвард Милуоки Бакс.', descUA: 'Грецький фрік, потужний форвард Мілуокі Бакс.' },
+      { nameRU: 'Александр Усик', nameUA: 'Олександр Усик', wiki: 'Oleksandr_Usyk', emoji: '🥊', descRU: 'Абсолютный чемпион мира в двух весовых категориях.', descUA: 'Абсолютний чемпіон світу у двох вагових категоріях.' },
+      { nameRU: 'Аманда Нунис', nameUA: 'Аманда Нуніс', wiki: 'Amanda_Nunes', emoji: '🦁', descRU: 'Львица, величайшая женщина-боец в истории UFC.', descUA: 'Левиця, найвидатніша жінка-боєць в історії UFC.' },
+      { nameRU: 'Валентина Шевченко', nameUA: 'Валентина Шевченко', wiki: 'Valentina_Shevchenko', emoji: '🥊', descRU: 'Пуля, чемпионка UFC, доминировавшая в наилегчайшем весе.', descUA: 'Куля, чемпіонка UFC, яка домінувала в найлегшій вазі.' },
+      { nameRU: 'Василь Ломаченко', nameUA: 'Василь Ломаченко', wiki: 'Vasiliy_Lomachenko', emoji: '🇺🇦', descRU: 'Хай-тек, украинский боксер, двукратный олимпийский чемпион.', descUA: 'Хай-тек, український боксер, дворазовий олімпійський чемпіон.' },
+      { nameRU: 'Геннадий Головкин', nameUA: 'Геннадій Головкін', wiki: 'Gennady_Golovkin', emoji: '🥊', descRU: 'GGG, боксер из Казахстана с нокаутирующим ударом.', descUA: 'GGG, боксер із Казахстану з нокаутуючим ударом.' },
+      { nameRU: 'Джейк Пол', nameUA: 'Джейк Пол', wiki: 'Jake_Paul', emoji: '🥊', descRU: 'Блогер, ставший профессиональным боксером и устраивающий шоу.', descUA: 'Блогер, який став професійним боксером і влаштовує шоу.' },
+      { nameRU: 'Джон Джонс', nameUA: 'Джон Джонс', wiki: 'Jon_Jones', emoji: '🥊', descRU: 'Один из лучших бойцов MMA вне зависимости от веса.', descUA: 'Один із найкращих бійців MMA незалежно від ваги.' },
+      { nameRU: 'Конор Макгрегор', nameUA: 'Конор Макгрегор', wiki: 'Conor_McGregor', emoji: '🥊', descRU: 'The Notorious, икона UFC, первый двойной чемпион.', descUA: 'The Notorious, ікона UFC, перший подвійний чемпіон.' },
+      { nameRU: 'Манни Пакьяо', nameUA: 'Манні Пак\'яо', wiki: 'Manny_Pacquiao', emoji: '🇵🇭', descRU: 'Пакмэн, филиппинская легенда бокса в 8 весовых категориях.', descUA: 'Пакмен, філіппінська легенда боксу у 8 вагових категоріях.' },
+      { nameRU: 'Майк Тайсон', nameUA: 'Майк Тайсон', wiki: 'Mike_Tyson', emoji: '🥊', descRU: 'Железный Майк, самый молодой чемпион-тяжеловес.', descUA: 'Залізничний Майк, наймолодший чемпіон-важковаговик.' },
+      { nameRU: 'Мухаммед Али', nameUA: 'Мухаммед Алі', wiki: 'Muhammad_Ali', emoji: '🦋', descRU: 'Величайший боксер в истории, спортивный и общественный символ.', descUA: 'Найвидатніший боксер в історії, спортивний та суспільний символ.' },
+      { nameRU: 'Сауль Альварес', nameUA: 'Сауль Альварес', wiki: 'Canelo_Alvarez', emoji: '🇲🇽', descRU: 'Канело, мексиканский лидер P4P, абсолютный чемпион.', descUA: 'Канело, мексиканський лідер P4P, абсолютний чемпіон.' },
+      { nameRU: 'Тайсон Фьюри', nameUA: 'Тайсон Ф\'юрі', wiki: 'Tyson_Fury', emoji: '👑', descRU: 'Цыганский Король, непобежденный боксер-тяжеловес.', descUA: 'Циганський Король, непереможений боксер-важковаговик.' },
+      { nameRU: 'Флойд Мейвезер', nameUA: 'Флойд Мейвезер', wiki: 'Floyd_Mayweather_Jr.', emoji: '💰', descRU: 'Непобежденный чемпион с рекордом 50-0.', descUA: 'Непереможений чемпіон із рекордом 50-0.' },
+      { nameRU: 'Хабиб Нурмагомедов', nameUA: 'Хабіб Нурмагомедов', wiki: 'Khabib_Nurmagomedov', emoji: '🦅', descRU: 'Орел, непобежденный чемпион UFC в легком весе.', descUA: 'Орел, непереможений чемпіон UFC у легкій вазі.' },
+      { nameRU: 'Андре Агасси', nameUA: 'Андре Агассі', wiki: 'Andre_Agassi', emoji: '🎾', descRU: 'Легенда тенниса с ярким стилем, обладатель карьерного Шлема.', descUA: 'Легенда тенісу з яскравим стилем, володар кар\'єрного Шолома.' },
+      { nameRU: 'Карлос Алькарас', nameUA: 'Карлос Алькарас', wiki: 'Carlos_Alcaraz', emoji: '🇪🇸', descRU: 'Молодой испанский чемпион, наследник Рафаэля Надаля.', descUA: 'Молодий іспанський чемпіон, спадкоємець Рафаеля Надаля.' },
+      { nameRU: 'Мария Шарапова', nameUA: 'Марія Шарапова', wiki: 'Maria_Sharapova', emoji: '🎾', descRU: 'Знаменитая теннисистка, экс-первая ракетка мира.', descUA: 'Відома тенісистка, екс-перша ракетка світу.' },
+      { nameRU: 'Новак Джокович', nameUA: 'Новак Джокович', wiki: 'Novak_Djokovic', emoji: '🇷🇸', descRU: 'Рекордсмен по числу титулов Большого шлема.', descUA: 'Рекордсмен за кількістю титулів Великого Шолома.' },
+      { nameRU: 'Рафаэль Надаль', nameUA: 'Рафаель Надаль', wiki: 'Rafael_Nadal', emoji: '🇪🇸', descRU: 'Король грунта, легенда тенниса из Испании.', descUA: 'Король ґрунту, легенда тенісу з Іспанії.' },
+      { nameRU: 'Роджер Федерер', nameUA: 'Роджер Федерер', wiki: 'Roger_Federer', emoji: '🇨🇭', descRU: 'Маэстро корта, образец элегантности и стиля в теннисе.', descUA: 'Маестро корту, зразок елегантності та стилю в тенісі.' },
+      { nameRU: 'Серена Уильямс', nameUA: 'Серена Вільямс', wiki: 'Serena_Williams', emoji: '🎾', descRU: 'Доминирующая чемпионка женского тенниса.', descUA: 'Домінуюча чемпіонка жіночого тенісу.' },
+      { nameRU: 'Янник Синнер', nameUA: 'Яннік Сіннер', wiki: 'Jannik_Sinner', emoji: '🇮🇹', descRU: 'Итальянский теннисист, победитель турниров Большого шлема.', descUA: 'Італійський тенісист, переможець турнірів Великого Шолома.' },
+      { nameRU: 'Айртон Сенна', nameUA: 'Айртон Сенна', wiki: 'Ayrton_Senna', emoji: '🏎️', descRU: 'Волшебник Формулы-1, легенда автоспорта Бразилии.', descUA: 'Чарівник Формули-1, легенда автоспорту Бразилії.' },
+      { nameRU: 'Ален Прост', nameUA: 'Ален Прост', wiki: 'Alain_Prost', emoji: '🇨🇵', descRU: 'Профессор Формулы-1, четырехкратный чемпион мира.', descUA: 'Професор Формули-1, чотириразовий чемпіон світу.' },
+      { nameRU: 'Льюис Хэмилтон', nameUA: 'Льюїс Гемілтон', wiki: 'Lewis_Hamilton', emoji: '🏎️', descRU: 'Семикратный чемпион Формулы-1, рекордсмен по победам.', descUA: 'Семикратний чемпіон Формули-1, рекордсмен за перемогами.' },
+      { nameRU: 'Макс Ферстаппен', nameUA: 'Макс Ферстаппен', wiki: 'Max_Verstappen', emoji: '🇳🇱', descRU: 'Летучий голландец, действующий доминатор Формулы-1.', descUA: 'Летючий голландець, чинний домінатор Формули-1.' },
+      { nameRU: 'Михаэль Шумахер', nameUA: 'Міхаель Шумахер', wiki: 'Michael_Schumacher', emoji: '🏎️', descRU: 'Красный Барон, легенда Ferrari и автоспорта.', descUA: 'Червоний Барон, легенда Ferrari та автоспорту.' },
+      { nameRU: 'Никки Лауда', nameUA: 'Ніккі Лауда', wiki: 'Niki_Lauda', emoji: '🇦🇹', descRU: 'Трехкратный чемпион мира, совершивший подвиг возвращения в гонки.', descUA: 'Триразовий чемпіон світу, який здійснив подвиг повернення в перегони.' },
+      { nameRU: 'Себастьян Феттель', nameUA: 'Себастьян Феттель', wiki: 'Sebastian_Vettel', emoji: '🇩🇪', descRU: 'Четырехкратный чемпион мира в составе Ред Булл.', descUA: 'Чотириразовий чемпіон світу у складі Ред Булл.' },
+      { nameRU: 'Александр Овечкин', nameUA: 'Олександр Овечкін', wiki: 'Alexander_Ovechkin', emoji: '🏒', descRU: 'Легендарный российский хоккеист, погоня за рекордом Гретцки.', descUA: 'Легендарний російський хокеїст, погоня за рекордом Гретцкі.' },
+      { nameRU: 'Конор Макдэвид', nameUA: 'Конор Макдевід', wiki: 'Connor_McDavid', emoji: '🏒', descRU: 'Самый скоростной и техничный современный хоккеист НХЛ.', descUA: 'Найшвидкіший та найтехнічніший сучасний хокеїст НХЛ.' },
+      { nameRU: 'Сидни Кросби', nameUA: 'Сідні Кросбі', wiki: 'Sidney_Crosby', emoji: '🇨🇦', descRU: 'Малыш Сид, легендарный капитан Питтсбурга и Канады.', descUA: 'Малюк Сід, легендарний капітан Піттсбурга та Канади.' },
+      { nameRU: 'Уэйн Гретцки', nameUA: 'Вейн Гретцкі', wiki: 'Wayne_Gretzky', emoji: '👑', descRU: 'Великий, абсолютный рекордсмен НХЛ по очкам.', descUA: 'Великий, абсолютний рекордсмен НХЛ за очками.' },
+      { nameRU: 'Жан Беленюк', nameUA: 'Жан Беленюк', wiki: 'Zhan_Beleniuk', emoji: '🥇', descRU: 'Украинский борец греко-римского стиля, олимпийский чемпион.', descUA: 'Український борець греко-римського стилю, олімпійський чемпіон.' },
+      { nameRU: 'Майкл Фелпс', nameUA: 'Майкл Фелпс', wiki: 'Michael_Phelps', emoji: '🏊‍♂️', descRU: 'Многократный рекордсмен, 23-кратный олимпийский чемпион по плаванию.', descUA: 'Багаторазовий рекордсмен, 23-разовий олімпійський чемпіон із плавання.' },
+      { nameRU: 'Сергій Бубка', nameUA: 'Сергій Бубка', wiki: 'Sergey_Bubka', emoji: '🏅', descRU: 'Легендарный украинский прыгун с шестом, побивший десятки мировых рекордов.', descUA: 'Легендарний український стрибун із жердиною, який побив десятки світових рекордів.' },
+      { nameRU: 'Усейн Болт', nameUA: 'Усейн Болт', wiki: 'Usain_Bolt', emoji: '⚡', descRU: 'Самый быстрый человек на Земле, ямайский спринтер.', descUA: 'Найшвидша людина на Землі, ямайський спринтер.' },
+      { nameRU: 'Симона Байлз', nameUA: 'Сімона Байлс', wiki: 'Simone_Biles', emoji: '🤸‍♀️', descRU: 'Американская гимнастка, самая титулованная в истории.', descUA: 'Американська гімнастка, найтитулованіша в історії.' },
+      { nameRU: 'Тайгер Вудс', nameUA: 'Тайгер Вудс', wiki: 'Tiger_Woods', emoji: '🏌️‍♂️', descRU: 'Легенда гольфа, лицо этого спорта на десятилетия.', descUA: 'Легенда гольфу, обличчя цього спорту на десятиліття.' },
+      { nameRU: 'Tom Brady', nameUA: 'Том Бреді', wiki: 'Tom_Brady', emoji: '🏈', descRU: 'Величайший квотербек американского футбола, обладатель 7 перстней.', descUA: 'Найвидатніший квотербек американського футболу, володар 7 перснів.' }
+    ]
+  },
+  {
+    id: 'bloggers', icon: '📱', nameRU: 'Блогеры', nameUA: 'Блогери',
+    chars: [
+      { nameRU: 'IShowSpeed', nameUA: 'IShowSpeed', wiki: 'IShowSpeed', emoji: '⚡', descRU: 'Эксцентричный молодой стример, фанат Роналду.', descUA: 'Ексцентричний молодий стрімер, фанат Роналду.' },
+      { nameRU: 'Jake Paul', nameUA: 'Джейк Пол', wiki: 'Jake_Paul', emoji: '🥊', descRU: 'Блогер-боксер, устраивающий громкие поединки.', descUA: 'Блогер-боксер, який влаштовує гучні поєдинки.' },
+      { nameRU: 'James Charles', nameUA: 'Джеймс Чарльз', wiki: 'James_Charles_(influencer)', emoji: '💄', descRU: 'Американский бьюти-блогер и визажист.', descUA: 'Американський б\'юті-блогер та визажист.' },
+      { nameRU: 'Kai Cenat', nameUA: 'Кай Сенат', wiki: 'Kai_Cenat', emoji: '👑', descRU: 'Рекордсмен Twitch по числу подписчиков, звезда трансляций.', descUA: 'Рекордсмен Twitch за кількістю підписників, зірка трансляцій.' },
+      { nameRU: 'Logan Paul', nameUA: 'Логан Пол', wiki: 'Logan_Paul', emoji: '🎥', descRU: 'Эпатажный американский блогер, рестлер WWE.', descUA: 'Епатажний американський блогер, рестлер WWE.' },
+      { nameRU: 'Mark Rober', nameUA: 'Марк Робер', wiki: 'Mark_Rober', emoji: '🚀', descRU: 'Инженер, экс-сотрудник NASA, создающий научные вирусные ролики.', descUA: 'Інженер, екс-співробітник NASA, який створює наукові вірусні ролики.' },
+      { nameRU: 'MrBeast', nameUA: 'MrBeast', wiki: 'MrBeast', emoji: '💸', descRU: 'Джимми Дональдсон, самый популярный блогер в мире, раздающий миллионы.', descUA: 'Джиммі Дональдсон, найпопулярніший блогер у світі, який роздає мільйони.' },
+      { nameRU: 'PewDiePie', nameUA: 'PewDiePie', wiki: 'PewDiePie', emoji: '👊', descRU: 'Феликс Чельберг, легендарный шведский блогер, первопроходец YouTube.', descUA: 'Фелікс Чельберг, легендарний шведський блогер, першопроходець YouTube.' },
+      { nameRU: 'Vsauce', nameUA: 'Vsauce', wiki: 'Vsauce', emoji: '🧠', descRU: 'Майкл Стивенс, главный популяризатор науки на YouTube.', descUA: 'Майкл Стівенс, головний популяризатор науки на YouTube.' },
+      { nameRU: 'Zach King', nameUA: 'Зак Кінг', wiki: 'Zach_King', emoji: '🪄', descRU: 'Король видеомонтажа и "цифровой магии" в коротких роликах.', descUA: 'Король відеомонтажу та "цифрової магії" в коротких роликах.' },
+      { nameRU: 'Данила Поперечный', nameUA: 'Данила Поперечний', wiki: 'Danila_Poperechny', emoji: '🎤', descRU: 'Российский стендап-комик, блогер и подкастер.', descUA: 'Російський стендап-комік, блогер та подкастер.' },
+      { nameRU: 'Ивангай', nameUA: 'Івангай', wiki: 'EeOneGuy', emoji: '🎭', descRU: 'Легенда раннего YouTube в СНГ с лозунгом "Хаю-хай".', descUA: 'Легенда раннього YouTube в СНД з гаслом "Хаю-хай".' },
+      { nameRU: 'Катя Клэп', nameUA: 'Катя Клеп', wiki: 'Kate_Clapp', emoji: '🎀', descRU: 'Первопроходец женского блогинга на русскоязычном YouTube.', descUA: 'Першопроходець жіночого блогінгу на російськомовному YouTube.' },
+      { nameRU: 'Стас Давыдов', nameUA: 'Стас Давидов', wiki: 'This_is_Horosho', emoji: '📺', descRU: 'Ведущий культового шоу обзоров вирусных видео This is Хорошо.', descUA: 'Ведучий культового шоу оглядів вірусних відео This is Хорошо.' },
+      { nameRU: 'Wylsacom', nameUA: 'Wylsacom', wiki: 'Wylsacom', emoji: '🍏', descRU: 'Валентин Петухов, главный техноблогер СНГ, обозреватель гаджетов.', descUA: 'Валентин Пєтухов, головний техноблогер СНД, оглядач гаджетів.' },
+      { nameRU: 'Юрий Дудь', nameUA: 'Юрій Дудь', wiki: 'Yury_Dud', emoji: '🎙️', descRU: 'Журналист, интервьюер, задающий острые вопросы известным людям.', descUA: 'Журналіст, інтерв\'юер, який ставить гострі запитання відомим людям.' },
+      { nameRU: 'Антон Птушкін', nameUA: 'Антон Птушкін', wiki: 'Anton_Ptushkin', emoji: '✈️', descRU: 'Харизматичный украинский тревел-блогер, снимающий фильмы о странах в одиночку.', descUA: 'Харизматичний український тревел-блогер, який знімає фільми про країни самотужки.' },
+      { nameRU: 'Дмитро Комаров', nameUA: 'Дмитро Комаров', wiki: 'Dmitry_Komarov_(journalist)', emoji: '🗺️', descRU: 'Ведущий программы "Мир наизнанку", путешественник по экстремальным местам.', descUA: 'Ведучий програми "Світ навиворіт", мандрівник екстремальними місцями.' },
+      { nameRU: 'Євген Синельников', nameUA: 'Євген Синельников', wiki: 'Yevgen_Synelnykov', emoji: '🎬', descRU: 'Украинский режиссер и ведущий, соавтор проекта "Орел и Решка".', descUA: 'Український режисер та ведучий, співавтор проекту "Орел і Решка".' }
+    ]
+  }
+];
+
+let state = {
+  lang: 'ua', playerCount: 5, selectedCats: new Set(CATEGORIES.map(c => c.id)),
+  currentPlayer: 0, spySet: new Set(), usedChars: [], chosenChar: null, cardOpen: false
+};
+
+let currentGame = null; 
+let secretState = {
+  lang: 'ua', playerCount: 2, selectedCats: new Set(CATEGORIES.map(c => c.id)),
+  role: null, peer: null, conn: null, roomCode: null,
+  grid: [], mySelected: null, opponentSelectedWiki: null, myEliminated: new Set(),
+  isMyTurn: false, gameActive: false, stage: 'lobby',
+  myReady: false, opponentReady: false, accuseMode: false
+};
+
+// ════════════════════════════════════════════
+//  IMAGE FETCH & CACHE
+// ════════════════════════════════════════════
+const imgCache = {};
+
+async function fetchWikiImage(slug, displayName=''){
+  if(imgCache[slug] !== undefined) return imgCache[slug];
+  
+  let url = null;
+  if (!url) {
+    try {
+      const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(slug)}`, { signal: AbortSignal.timeout(5000) });
+      if(res.ok) { const d = await res.json(); url = d?.originalimage?.source || d?.thumbnail?.source || null; }
+    } catch(e){}
+  }
+  if (!url) {
+    try {
+      const res = await fetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(slug)}&prop=pageimages&format=json&pithumbsize=500&origin=*`, { signal: AbortSignal.timeout(5000) });
+      if(res.ok) {
+        const d = await res.json(); const pages = d?.query?.pages || {};
+        for (const k in pages) { const p = pages[k]; if (p?.original?.source) { url = p.original.source; break; } if (p?.thumbnail?.source) { url = p.thumbnail.source; break; } }
+      }
+    } catch(e){}
+  }
+  if (!url && displayName) {
+    try {
+      const cleanName = displayName.replace(/\s+/g, '%20').toLowerCase();
+      const res = await fetch(`https://api.themoviedb.org/3/search/multi?query=${cleanName}&api_key=6b9761ba22331f04f88db6bf80a87b7e`, { signal: AbortSignal.timeout(5000) });
+      if(res.ok) { const d = await res.json(); const results = d?.results || []; if (results.length > 0 && results[0].poster_path) { url = `https://image.tmdb.org/t/p/w500${results[0].poster_path}`; } }
+    } catch(e){}
+  }
+  
+  imgCache[slug] = url || '';
+  return url;
+}
+
+// ════════════════════════════════════════════
+//  UI & TRANSLATION
+// ════════════════════════════════════════════
+function updateStaticTexts() {
+  const t = TRANSLATIONS[state.lang];
+  const tg = TRANSLATIONS[secretState.lang];
+
+  // Header & Modals
+  document.getElementById('btn-rules').textContent = t.rulesBtn;
+  document.getElementById('btn-lang-toggle').textContent = t.langBtn;
+  document.getElementById('modal-rules-title').textContent = t.rulesModalTitle;
+  document.getElementById('modal-rules-body').innerHTML = t.rulesContent;
+  
+  // Main Menu
+  document.getElementById('menu-subtitle').textContent = t.menuSubtitle;
+  document.getElementById('menu-spy-title').textContent = t.menuSpyTitle;
+  document.getElementById('menu-spy-desc').textContent = t.menuSpyDesc;
+  document.getElementById('menu-secret-title').textContent = t.menuSecretTitle;
+  document.getElementById('menu-secret-desc').textContent = t.menuSecretDesc;
+  document.getElementById('lock-text').textContent = t.lockText;
+
+  // Role Screen
+  document.getElementById('role-title').textContent = tg.roleTitle;
+  document.getElementById('role-subtitle').textContent = tg.roleSubtitle;
+  document.getElementById('role-host-title').textContent = tg.roleHost;
+  document.getElementById('role-guest-title').textContent = tg.roleGuest;
+
+  // Spy Setup
+  document.getElementById('setup-label-players').textContent = t.setupPlayers;
+  document.getElementById('setup-spy-hint').innerHTML = t.setupSpyHint.replace('{N}', Math.floor(state.playerCount / 3));
+  document.getElementById('setup-label-categories').textContent = t.setupCategories;
+  document.getElementById('btn-select-all').textContent = state.selectedCats.size === CATEGORIES.length ? t.deselectAll : t.selectAll;
+  document.getElementById('btn-start-deal').textContent = t.startBtn;
+  
+  // Spy Deal & Final
+  if(document.getElementById('screen-deal').classList.contains('active')) {
+    document.getElementById('deal-player-name').textContent = t.playerBadge.replace('{N}', state.currentPlayer + 1);
+    document.getElementById('deal-prompt-text').textContent = state.currentPlayer === 0 ? t.promptTake : t.promptPass;
+    document.getElementById('btn-open-card-init').textContent = t.openCardBtn;
+    document.getElementById('text-tap-open').textContent = t.tapToOpen;
+    document.getElementById('btn-restart-action').textContent = t.restartBtn;
+  }
+  document.getElementById('final-title').innerHTML = t.finalTitle;
+  document.getElementById('label-stat-players').textContent = t.finalPlayers;
+  document.getElementById('label-stat-spies').textContent = t.finalSpies;
+  document.getElementById('final-description').textContent = t.finalDesc;
+  document.getElementById('btn-new-game-restart').textContent = t.newGameBtn;
+  document.getElementById('confirm-title').textContent = t.abortConfirmTitle;
+  document.getElementById('confirm-desc').textContent = t.abortConfirmDesc;
+  document.getElementById('btn-cancel').textContent = t.cancelBtn;
+  document.getElementById('btn-confirm').textContent = t.confirmBtn;
+
+  // Secret Setup
+  document.getElementById('label-host-setup').textContent = tg.secretHostSetup;
+  document.getElementById('label-host-cats').textContent = tg.secretHostCats;
+  document.getElementById('btn-host-all').textContent = secretState.selectedCats.size === CATEGORIES.length ? tg.deselectAll : tg.selectAll;
+  document.getElementById('btn-generate-room').textContent = tg.secretGenerateBtn;
+  document.getElementById('label-host-code').textContent = tg.secretHostCode;
+  document.getElementById('text-host-share').textContent = tg.secretHostShare;
+  document.getElementById('btn-start-secret-game').textContent = tg.secretStartBtn;
+  document.getElementById('btn-host-cancel').textContent = tg.cancelBtn;
+  document.getElementById('label-guest-code').textContent = tg.secretGuestCode;
+  document.getElementById('btn-join-game').textContent = tg.secretConnectBtn;
+  
+  // Secret Game
+  const readyBtn = document.getElementById('btn-myst-ready');
+  const endTurnBtn = document.getElementById('btn-myst-end-turn');
+  const accuseBtn = document.getElementById('btn-myst-accuse');
+  if(readyBtn) readyBtn.textContent = tg.secretReadyBtn;
+  if(endTurnBtn) endTurnBtn.textContent = tg.secretEndTurnBtn;
+  if(accuseBtn) accuseBtn.textContent = secretState.accuseMode ? tg.secretCancelAccuseBtn : tg.secretAccuseBtn;
+  document.getElementById('btn-myst-surrender').textContent = tg.secretSurrenderBtn;
+  document.getElementById('btn-res-menu').textContent = tg.secretBackMenuBtn;
+  document.getElementById('res-lbl-mine').textContent = tg.resMyChoice;
+  document.getElementById('res-lbl-opp').textContent = tg.resOppChoice;
+}
+
+function toggleLanguage() {
+  state.lang = state.lang === 'ru' ? 'ua' : 'ru';
+  secretState.lang = state.lang;
+  updateStaticTexts();
+  buildCatsUI(); 
+  buildSecretCatsUI();
+}
+
+function switchScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  updateStaticTexts();
+}
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+function openInfoModal(charData) {
+  const lang = currentGame === 'secret' ? secretState.lang : state.lang;
+  const t = TRANSLATIONS[lang];
+  const name = lang === 'ru' ? charData.nameRU : charData.nameUA;
+  const description = lang === 'ru' ? charData.descRU : charData.descUA;
+  const cardTitle = t.characterYour || 'Персонаж';
+  const cardNote = t.characterWarn || 'Не кажи ім’я вголос';
+
+  document.getElementById('modal-info-title').textContent = name;
+  document.getElementById('modal-info-body').innerHTML = `
+    <div class="info-modal-card">
+      <div class="card-img-wrap" style="min-height:260px; border-radius: 24px; overflow:hidden; background: rgba(0,0,0,0.08);">
+        <div class="card-img-placeholder">${charData.emoji}</div>
+        <div class="img-loader"><div class="spinner"></div></div>
+        <img class="card-img loading" id="modal-char-photo" alt="${name}" />
+        <div class="card-img-overlay"></div>
+      </div>
+      <div class="card-info" style="padding: 18px 18px 14px; position: static;">
+        <div class="card-top-label">${cardTitle}</div>
+        <div class="card-name">${name}</div>
+        <div class="card-bot-label">${cardNote}</div>
+      </div>
+      <p style="font-size: 1rem; line-height: 1.6; color: var(--text); margin-top: 14px;">${description}</p>
+    </div>
+  `;
+
+  const modalImg = document.getElementById('modal-char-photo');
+  const modalLoader = modalImg.closest('.card-img-wrap').querySelector('.img-loader');
+  const modalPlaceholder = modalImg.closest('.card-img-wrap').querySelector('.card-img-placeholder');
+
+  fetchWikiImage(charData.wiki || name, name).then(url => {
+    if (url) {
+      modalImg.src = url;
+      modalImg.onload = () => {
+        modalImg.classList.remove('loading');
+        modalLoader.style.display = 'none';
+        modalPlaceholder.style.display = 'none';
+      };
+      modalImg.onerror = () => { modalLoader.style.display = 'none'; };
+    } else {
+      modalLoader.style.display = 'none';
+    }
+  });
+
+  openModal('infoModal');
+}
+
+// ════════════════════════════════════════════
+//  MAIN MENU NAVIGATION
+// ════════════════════════════════════════════
+function selectGame(game) {
+  currentGame = game;
+  if (game === 'spy') {
+    document.body.classList.remove('is-secret-mode');
+    document.getElementById('btn-rules').style.display = 'block';
+    document.getElementById('btn-lang-toggle').style.display = 'block';
+    document.getElementById('btn-back-menu').style.display = 'block';
+    document.getElementById('header-title').textContent = '🕵️‍♂️ SPY';
+    buildCatsUI();
+    switchScreen('screen-setup');
+  } else if (game === 'secret') {
+    document.body.classList.add('is-secret-mode');
+    document.getElementById('btn-rules').style.display = 'none';
+    document.getElementById('btn-lang-toggle').style.display = 'none';
+    document.getElementById('btn-back-menu').style.display = 'block';
+    document.getElementById('header-title').textContent = '🎭 ТАЄМНИЦЯ';
+    switchScreen('screen-secret-role-choice');
+  }
+}
+
+function backToMenu() {
+  currentGame = null;
+  document.body.classList.remove('is-secret-mode');
+  document.getElementById('btn-rules').style.display = 'none';
+  document.getElementById('btn-lang-toggle').style.display = 'none';
+  document.getElementById('btn-back-menu').style.display = 'none';
+  document.getElementById('header-title').textContent = '🕵️‍♂️ PartyBox';
+  cancelSecretLobby();
+  switchScreen('screen-main-menu');
+}
+
+// ════════════════════════════════════════════
+//  SPY GAME LOGIC
+// ════════════════════════════════════════════
+function buildCatsUI() {
+  const container = document.getElementById('cats-container');
+  container.innerHTML = '';
+  CATEGORIES.forEach(cat => {
+    const active = state.selectedCats.has(cat.id);
+    const displayName = state.lang === 'ru' ? cat.nameRU : cat.nameUA;
+    const el = document.createElement('div');
+    el.className = 'cat-toggle' + (active ? ' active' : '');
+    el.innerHTML = `<div class="ct-icon">${cat.icon}</div><div style="flex:1;"><div class="ct-name">${displayName}</div><div class="ct-count">${cat.chars.length} ${state.lang==='ru'?'персонажей':'персонажів'}</div></div><div class="ct-check">${active ? '✓' : ''}</div>`;
+    el.addEventListener('click', () => toggleCategory(cat.id));
+    container.appendChild(el);
+  });
+}
+function toggleCategory(id) {
+  if (state.selectedCats.has(id)) {
+    if (state.selectedCats.size === 1) { showToast(TRANSLATIONS[state.lang].noCategoryError); return; }
+    state.selectedCats.delete(id);
+  } else state.selectedCats.add(id);
+  buildCatsUI(); updateStaticTexts();
+}
+function toggleAll() {
+  state.selectedCats = state.selectedCats.size === CATEGORIES.length ? new Set([CATEGORIES[0].id]) : new Set(CATEGORIES.map(c => c.id));
+  buildCatsUI(); updateStaticTexts();
+}
+function changeCount(delta) {
+  const next = state.playerCount + delta;
+  if (next < 3 || next > 12) return; 
+  state.playerCount = next;
+  document.getElementById('player-count').textContent = next;
+  updateStaticTexts();
+}
+
+function secureRandomInt(max) { return Math.floor(Math.random() * max); }
+function secureShuffle(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = secureRandomInt(i + 1);
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
+function startGame() {
+  const pool = [];
+  CATEGORIES.forEach(cat => { if (state.selectedCats.has(cat.id)) pool.push(...cat.chars); });
+  if (pool.length === 0) return;
+  const chosen = pool[secureRandomInt(pool.length)];
+  state.chosenChar = chosen;
+  
+  const spiesCount = Math.max(1, Math.floor(state.playerCount / 3));
+  const roleIndices = secureShuffle([...Array(state.playerCount).keys()]);
+  state.spySet = new Set(roleIndices.slice(0, spiesCount));
+  state.currentPlayer = 0;
+  state.cardOpen = false;
+  
+  document.getElementById('final-players').textContent = state.playerCount;
+  document.getElementById('final-spies').textContent = spiesCount;
+  
+  showDealPrompt(true); switchScreen('screen-deal');
+}
+
+function showDealPrompt(isFirst) {
+  updateStaticTexts();
+  document.getElementById('deal-prompt').style.display = 'block';
+  document.getElementById('flip-scene').style.display = 'none';
+  document.getElementById('deal-actions').style.display = 'none';
+  document.getElementById('flip-card').classList.remove('flipped');
+}
+
+function openCard() {
+  if (state.cardOpen) return;
+  state.cardOpen = true;
+  const isSpy = state.spySet.has(state.currentPlayer);
+  const back = document.getElementById('flip-back');
+  const t = TRANSLATIONS[state.lang];
+  
+  if (isSpy) {
+    back.className = 'flip-face flip-back back-spy';
+    back.innerHTML = `<div class="spy-content"><div class="spy-emoji">🕵️‍♂️</div><div class="spy-title">${t.youAreSpy}</div><div class="spy-sub">${t.spyTask}</div></div>
+    <div class="spy-card-info"><div class="spy-badge"><div class="spy-dot"></div><div class="spy-badge-text">${t.spyBadge}</div></div></div>`;
+  } else {
+    back.className = 'flip-face flip-back back-char';
+    const charName = state.lang === 'ru' ? state.chosenChar.nameRU : state.chosenChar.nameUA;
+    back.innerHTML = `
+      <div class="card-img-wrap">
+        <div class="card-img-placeholder" id="card-ph">${state.chosenChar.emoji}</div>
+        <div class="img-loader" id="img-ldr"><div class="spinner"></div></div>
+        <img class="card-img loading" id="card-photo" alt="${charName}"/>
+        <div class="card-img-overlay"></div>
+      </div>
+      <div class="card-info">
+        <div class="info-trigger-btn" id="spy-info-btn">i</div>
+        <div class="card-top-label">${t.characterYour}</div>
+        <div class="card-name">${charName}</div>
+        <div class="card-bot-label">${t.characterWarn}</div>
+      </div>
+    `;
+    
+    document.getElementById('spy-info-btn').onclick = (e) => {
+      e.stopPropagation();
+      openInfoModal(state.chosenChar);
+    };
+
+    const imgEl = back.querySelector('#card-photo');
+    const ldr = back.querySelector('#img-ldr');
+    const ph = back.querySelector('#card-ph');
+    fetchWikiImage(state.chosenChar.wiki, charName).then(url => {
+      if(url){
+        imgEl.onload = () => { imgEl.classList.remove('loading'); ldr.style.display='none'; ph.style.display='none'; };
+        imgEl.onerror = () => { imgEl.style.display='none'; ldr.style.display='none'; ph.style.display='flex'; };
+        imgEl.src = url;
+      } else {
+        ldr.style.display='none'; ph.style.display='flex';
+      }
+    });
+  }
+  
+  document.getElementById('deal-prompt').style.display = 'none';
+  document.getElementById('flip-scene').style.display = 'block';
+  setTimeout(() => {
+    document.getElementById('flip-card').classList.add('flipped');
+    setTimeout(() => {
+      document.getElementById('btn-close-card').textContent = state.currentPlayer >= state.playerCount - 1 ? t.finishHandoutBtn : t.closeCardBtn;
+      document.getElementById('deal-actions').style.display = 'flex';
+    }, 400);
+  }, 50);
+}
+
+function closeCard() {
+  document.getElementById('flip-card').classList.remove('flipped');
+  document.getElementById('deal-actions').style.display = 'none';
+  state.cardOpen = false;
+  setTimeout(() => {
+    document.getElementById('flip-scene').style.display = 'none';
+    state.currentPlayer++;
+    if (state.currentPlayer >= state.playerCount) switchScreen('screen-final');
+    else showDealPrompt(false);
+  }, 400);
+}
+
+function confirmAbort() { openModal('confirmModal'); }
+function executeRestart() { closeModal('confirmModal'); resetGame(); }
+function resetGame() {
+  state.currentPlayer = 0; state.cardOpen = false;
+  document.getElementById('deal-actions').style.display = 'none';
+  document.getElementById('flip-scene').style.display = 'none';
+  switchScreen('screen-setup');
+}
+
+// ════════════════════════════════════════════
+//  SECRET GAME LOGIC (ТАЄМНИЦЯ) - З ІНТЕГРАЦІЄЮ ЗОБРАЖЕНЬ
+// ════════════════════════════════════════════
+function chooseSecretHost() {
+  secretState.role = 'host';
+  buildSecretCatsUI();
+  document.getElementById('host-setup-view').style.display = 'flex';
+  document.getElementById('host-lobby-view').style.display = 'none';
+  switchScreen('screen-secret-lobby-host');
+}
+
+function chooseSecretGuest() {
+  secretState.role = 'guest';
+  document.getElementById('room-code-input').value = '';
+  document.getElementById('join-status').textContent = '';
+  switchScreen('screen-secret-lobby-guest');
+}
+
+function buildSecretCatsUI() {
+  const container = document.getElementById('secret-cats-container');
+  container.innerHTML = '';
+  CATEGORIES.forEach(cat => {
+    const active = secretState.selectedCats.has(cat.id);
+    const displayName = secretState.lang === 'ru' ? cat.nameRU : cat.nameUA;
+    const el = document.createElement('div');
+    el.className = 'cat-toggle' + (active ? ' active' : '');
+    el.innerHTML = `<div class="ct-icon">${cat.icon}</div><div style="flex:1;"><div class="ct-name">${displayName}</div></div><div class="ct-check">${active ? '✓' : ''}</div>`;
+    el.addEventListener('click', () => {
+      if (active && secretState.selectedCats.size === 1) return;
+      active ? secretState.selectedCats.delete(cat.id) : secretState.selectedCats.add(cat.id);
+      buildSecretCatsUI(); updateStaticTexts();
+    });
+    container.appendChild(el);
+  });
+}
+
+function toggleAllMysteryCats() {
+  secretState.selectedCats = secretState.selectedCats.size === CATEGORIES.length ? new Set([CATEGORIES[0].id]) : new Set(CATEGORIES.map(c => c.id));
+  buildSecretCatsUI(); updateStaticTexts();
+}
+
+function generateSecretRoomCode() {
+  const pool = [];
+  CATEGORIES.forEach(cat => { if (secretState.selectedCats.has(cat.id)) pool.push(...cat.chars); });
+  if (pool.length < 16) { showToast(TRANSLATIONS[secretState.lang].noCategoryError); return; }
+  secretState.grid = secureShuffle(pool).slice(0, 16);
+  
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  secretState.roomCode = code;
+  
+  secretState.peer = new Peer('pb-secret-' + code);
+  secretState.peer.on('open', id => {
+    document.getElementById('room-code-display').textContent = code.slice(0,3) + ' ' + code.slice(3);
+    document.getElementById('host-setup-view').style.display = 'none';
+    document.getElementById('host-lobby-view').style.display = 'flex';
+    document.getElementById('label-waiting-players').textContent = TRANSLATIONS[secretState.lang].secretWaitMsg;
+  });
+  secretState.peer.on('connection', conn => {
+    secretState.conn = conn;
+    conn.on('open', () => {
+      document.getElementById('host-wait-group').style.display = 'none';
+      document.getElementById('host-connected-group').style.display = 'block';
+      document.getElementById('host-connected-group').textContent = TRANSLATIONS[secretState.lang].secretConnectedMsg;
+      document.getElementById('btn-start-secret-game').style.display = 'block';
+    });
+    conn.on('data', handleNetworkData);
+    conn.on('close', cancelSecretLobby);
+  });
+  secretState.peer.on('error', err => { showToast('Помилка з\'єднання. Спробуйте ще раз.'); cancelSecretLobby(); });
+}
+
+function joinGame() {
+  const code = document.getElementById('room-code-input').value.trim().replace(/\s/g, '');
+  if (code.length !== 6) { showToast('Введіть 6 цифр'); return; }
+  
+  secretState.peer = new Peer();
+  secretState.peer.on('open', () => {
+    const conn = secretState.peer.connect('pb-secret-' + code, { reliable: true });
+    secretState.conn = conn;
+    conn.on('open', () => showToast(TRANSLATIONS[secretState.lang].secretConnectedMsg));
+    conn.on('data', handleNetworkData);
+    conn.on('close', cancelSecretLobby);
+  });
+  secretState.peer.on('error', () => showToast('Кімнату не знайдено.'));
+}
+
+function cancelSecretLobby() {
+  if (secretState.peer) { secretState.peer.destroy(); secretState.peer = null; }
+  secretState.conn = null;
+  document.getElementById('host-setup-view').style.display = 'flex';
+  document.getElementById('host-lobby-view').style.display = 'none';
+  document.getElementById('host-wait-group').style.display = 'flex';
+  document.getElementById('host-connected-group').style.display = 'none';
+  document.getElementById('btn-start-secret-game').style.display = 'none';
+}
+
+function startSecretGame() {
+  secretState.conn.send({ type: 'init', grid: secretState.grid.map(c => ({ nameRU: c.nameRU, nameUA: c.nameUA, emoji: c.emoji, wiki: c.wiki, descRU: c.descRU, descUA: c.descUA })) });
+  initSecretGameState();
+}
+
+function handleNetworkData(data) {
+  if (data.type === 'init') {
+    secretState.grid = data.grid;
+    initSecretGameState();
+  } else if (data.type === 'ready') {
+    secretState.opponentReady = true;
+    checkBothReady();
+  } else if (data.type === 'end_turn') {
+    secretState.isMyTurn = true;
+    renderSecretGame();
+  } else if (data.type === 'guess') {
+    const isCorrect = secretState.mySelected === data.idx;
+    secretState.conn.send({ type: 'guess_res', correct: isCorrect, oppChar: secretState.mySelected });
+    showSecretResult(!isCorrect, data.idx, secretState.mySelected); 
+  } else if (data.type === 'guess_res') {
+    showSecretResult(data.correct, secretState.mySelected, data.oppChar); 
+  } else if (data.type === 'surrender') {
+    showToast('Супротивник здався.');
+    setTimeout(backToMenu, 2000);
+  }
+}
+
+function initSecretGameState() {
+  secretState.stage = 'selection';
+  secretState.mySelected = null;
+  secretState.myEliminated = new Set();
+  secretState.myReady = false;
+  secretState.opponentReady = false;
+  secretState.accuseMode = false;
+  secretState.isMyTurn = false;
+  
+  document.getElementById('mystery-my-char-wrap').style.display = 'none';
+  switchScreen('screen-secret-game');
+  renderSecretGame();
+}
+
+function checkBothReady() {
+  if (secretState.myReady && secretState.opponentReady) {
+    secretState.stage = 'playing';
+    secretState.isMyTurn = secretState.role === 'host';
+    renderSecretGame();
+  }
+}
+
+function renderSecretGame() {
+  const gridEl = document.getElementById('cards-grid');
+  gridEl.innerHTML = '';
+  const t = TRANSLATIONS[secretState.lang];
+  
+  secretState.grid.forEach((char, idx) => {
+    const cell = document.createElement('div');
+    cell.className = 'card-cell';
+    const charName = secretState.lang === 'ru' ? char.nameRU : char.nameUA;
+    
+    if (secretState.myEliminated.has(idx)) cell.classList.add('eliminated');
+    if (secretState.stage === 'selection' && secretState.mySelected === idx) cell.classList.add('selected');
+    if (secretState.stage === 'playing' && !secretState.isMyTurn) cell.classList.add('locked');
+    if (secretState.accuseMode) cell.classList.add('accuse-target');
+    
+    cell.innerHTML = `
+      <div class="card-img-wrap">
+        <div class="card-img-placeholder">${char.emoji}</div>
+        <div class="img-loader"><div class="spinner"></div></div>
+        <img class="card-img loading" alt="${charName}" />
+        <div class="card-img-overlay"></div>
+        <div class="info-trigger-btn" title="Info">i</div>
+      </div>
+      <div class="secret-card-info">
+        <div class="card-top-label">${charName}</div>
+        <div class="card-bot-label">${t.characterWarn}</div>
+      </div>
+    `;
+
+    const imgEl = cell.querySelector('.card-img');
+    const loader = cell.querySelector('.img-loader');
+    const placeholder = cell.querySelector('.card-img-placeholder');
+    const infoBtn = cell.querySelector('.info-trigger-btn');
+    infoBtn.onclick = (e) => { e.stopPropagation(); openInfoModal(char); };
+
+    fetchWikiImage(char.wiki || charName, charName).then(url => {
+      if (url) {
+        imgEl.src = url;
+        imgEl.onload = () => {
+          imgEl.classList.remove('loading');
+          loader.style.display = 'none';
+          placeholder.style.display = 'none';
+        };
+        imgEl.onerror = () => { loader.style.display = 'none'; };
+      } else {
+        loader.style.display = 'none';
+      }
+    });
+
+    cell.onclick = () => handleCardClick(idx);
+    gridEl.appendChild(cell);
+  });
+
+  const readyBtn = document.getElementById('btn-myst-ready');
+  const endBtn = document.getElementById('btn-myst-end-turn');
+  const accBtn = document.getElementById('btn-myst-accuse');
+  const instr = document.getElementById('mystery-instruction-wrap');
+  const turnInd = document.getElementById('turn-indicator');
+  
+  if (secretState.stage === 'selection') {
+    instr.textContent = secretState.myReady ? t.secretInstrWaitReady : t.secretInstrPick;
+    readyBtn.style.display = 'block'; endBtn.style.display = 'none'; accBtn.style.display = 'none';
+    readyBtn.disabled = secretState.myReady;
+    turnInd.textContent = t.turnWait; turnInd.className = 'turn-indicator blink';
+  } else if (secretState.stage === 'playing') {
+    readyBtn.style.display = 'none';
+    endBtn.style.display = secretState.isMyTurn ? 'block' : 'none';
+    accBtn.style.display = secretState.isMyTurn ? 'block' : 'none';
+    accBtn.textContent = secretState.accuseMode ? t.secretCancelAccuseBtn : t.secretAccuseBtn;
+    
+    if (secretState.accuseMode) instr.textContent = t.secretInstrAccuseMode;
+    else instr.textContent = secretState.isMyTurn ? t.secretInstrMyTurn : t.secretInstrEnemyTurn;
+    
+    turnInd.textContent = secretState.isMyTurn ? t.turnMine : t.turnEnemy;
+    turnInd.className = 'turn-indicator ' + (secretState.isMyTurn ? '' : 'enemy');
+  }
+}
+
+function handleCardClick(idx) {
+  if (secretState.stage === 'selection') {
+    if (!secretState.myReady) { secretState.mySelected = idx; renderSecretGame(); }
+  } else if (secretState.stage === 'playing' && secretState.isMyTurn) {
+    if (secretState.accuseMode) {
+      secretState.accuseMode = false;
+      secretState.conn.send({ type: 'guess', idx: idx });
+      showToast('Обвинувачення відправлено...');
+      secretState.stage = 'ended';
+      renderSecretGame();
+    } else {
+      if (idx !== secretState.mySelected) {
+        secretState.myEliminated.has(idx) ? secretState.myEliminated.delete(idx) : secretState.myEliminated.add(idx);
+        renderSecretGame();
+      }
+    }
+  }
+}
+
+function sendMysteryReady() {
+  if (secretState.mySelected === null) { showToast('Оберіть персонажа!'); return; }
+  secretState.myReady = true;
+  secretState.conn.send({ type: 'ready' });
+  
+  const myChar = secretState.grid[secretState.mySelected];
+  const charName = secretState.lang === 'ru' ? myChar.nameRU : myChar.nameUA;
+  
+  document.getElementById('mystery-my-char-emoji').textContent = myChar.emoji;
+  document.getElementById('mystery-my-char-name').textContent = charName;
+  
+  const imgEl = document.getElementById('mystery-my-char-img');
+  imgEl.src = ''; imgEl.style.display = 'none';
+  document.getElementById('mystery-my-char-emoji').style.display = 'block';
+  
+  const infoBtn = document.getElementById('btn-myst-info');
+  infoBtn.onclick = (e) => { e.stopPropagation(); openInfoModal(myChar); };
+  
+  // Load beautiful image for sidebar
+  fetchWikiImage(myChar.wiki, charName).then(url => {
+    if(url) {
+      imgEl.src = url;
+      imgEl.style.display = 'block';
+      document.getElementById('mystery-my-char-emoji').style.display = 'none';
+    }
+  });
+
+  document.getElementById('mystery-my-char-wrap').style.display = 'flex';
+  
+  checkBothReady();
+  renderSecretGame();
+}
+
+function endSecretTurn() {
+  secretState.isMyTurn = false;
+  secretState.accuseMode = false;
+  secretState.conn.send({ type: 'end_turn' });
+  renderSecretGame();
+}
+
+function toggleAccuseMode() {
+  secretState.accuseMode = !secretState.accuseMode;
+  renderSecretGame();
+}
+
+function surrenderSecretGame() {
+  if (secretState.conn) secretState.conn.send({ type: 'surrender' });
+  backToMenu();
+}
+
+function showSecretResult(iWon, myCharIdx, oppCharIdx) {
+  const t = TRANSLATIONS[secretState.lang];
+  document.getElementById('result-icon').textContent = iWon ? '🎉' : '💔';
+  document.getElementById('result-title').textContent = iWon ? t.resWinTitle : t.resLoseTitle;
+  document.getElementById('result-message').textContent = iWon ? t.resWinMsg : t.resLoseMsg;
+  document.getElementById('result-title').style.background = iWon ? 'linear-gradient(135deg,var(--cyan),var(--violet))' : 'linear-gradient(135deg,var(--red),var(--pink))';
+
+  const mChar = secretState.grid[myCharIdx];
+  const oChar = secretState.grid[oppCharIdx];
+
+  const setupResultImage = (charObj, prefix) => {
+    const emojiEl = document.getElementById(`${prefix}-emoji`);
+    const imgEl = document.getElementById(`${prefix}-img`);
+    const nameEl = document.getElementById(`${prefix}-name`);
+    
+    emojiEl.style.display = 'block';
+    imgEl.style.display = 'none';
+    imgEl.src = '';
+    
+    if(charObj) {
+      const charName = secretState.lang === 'ru' ? charObj.nameRU : charObj.nameUA;
+      emojiEl.textContent = charObj.emoji;
+      nameEl.textContent = charName;
+      
+      fetchWikiImage(charObj.wiki, charName).then(url => {
+        if(url) {
+          imgEl.src = url;
+          imgEl.style.display = 'block';
+          emojiEl.style.display = 'none';
+        }
+      });
+    } else {
+      emojiEl.textContent = '❓';
+      nameEl.textContent = '-';
+    }
+  };
+
+  setupResultImage(mChar, 'res-my');
+  setupResultImage(oChar, 'res-opp');
+
+  if (secretState.peer) { secretState.peer.destroy(); secretState.peer = null; }
+  switchScreen('screen-secret-result');
+}
+
+// ════════════════════════════════════════════
+//  LANDSCAPE LOCK FOR MOBILE
+// ════════════════════════════════════════════
+function checkOrientation() {
+  const portrait = window.matchMedia("(orientation: portrait)");
+  const lock = document.getElementById('portraitLock');
+  
+  if (currentGame === 'secret' && portrait.matches) {
+    lock.classList.add('active');
+  } else {
+    lock.classList.remove('active');
+  }
+}
+
+window.addEventListener('orientationchange', checkOrientation);
+window.addEventListener('resize', checkOrientation);
+
+// ════════════════════════════════════════════
+//  INITIALIZATION
+// ════════════════════════════════════════════
+buildCatsUI();
+updateStaticTexts();
+</script>
+</body>
+</html>
